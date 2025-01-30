@@ -1,0 +1,114 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+const POSTS_PER_PAGE = 9;
+
+const posts = await getCollection('blog');
+const sortedPosts = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<Layout title="Blog">
+	<div class="space-y-12">
+		<header class="text-center space-y-4">
+			<h1 class="text-4xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent inline-block">
+				Blog
+			</h1>
+			<p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+				Explora mis artículos sobre desarrollo, tecnología y experiencias en el mundo del software.
+			</p>
+		</header>
+
+		<div id="posts-container" class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+			{sortedPosts.slice(0, POSTS_PER_PAGE).map(post => (
+				<article class="group">
+					<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
+						<div class="space-y-4">
+							<div class="flex items-center gap-2">
+								<span class={`bg-${post.data.categoryColor}-100 dark:bg-${post.data.categoryColor}-900/30 text-${post.data.categoryColor}-600 dark:text-${post.data.categoryColor}-400 text-sm font-medium px-2.5 py-0.5 rounded-full`}>
+									{post.data.category}
+								</span>
+								<span class="text-gray-500 dark:text-gray-400 text-sm">
+									{format(post.data.pubDate, "d 'de' MMMM, yyyy", { locale: es })}
+								</span>
+							</div>
+							<h3 class="font-bold text-xl group-hover:text-primary-500 transition-colors">
+								{post.data.title}
+							</h3>
+							<p class="text-gray-600 dark:text-gray-400">
+								{post.data.description}
+							</p>
+							<div class="flex items-center justify-between">
+								<a href={`/blog/${post.slug}`} class="inline-flex items-center text-primary-500 hover:text-primary-600">
+									Leer más
+									<svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M5 12h14m-7-7l7 7-7 7"/>
+									</svg>
+								</a>
+								<span class="text-sm text-gray-500 dark:text-gray-400">
+									{post.data.readingTime} min de lectura
+								</span>
+							</div>
+						</div>
+					</div>
+				</article>
+			))}
+		</div>
+
+		{sortedPosts.length > POSTS_PER_PAGE && (
+			<div class="flex justify-center pt-8">
+				<button
+					id="load-more"
+					class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-full transition-colors duration-300"
+					data-total-posts={sortedPosts.length}
+				>
+					Cargar más artículos
+					<svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+					</svg>
+				</button>
+			</div>
+		)}
+	</div>
+</Layout>
+
+<script>
+	let currentPage = 1;
+	const POSTS_PER_PAGE = 9;
+	
+	document.getElementById('load-more')?.addEventListener('click', async () => {
+		try {
+			const button = document.getElementById('load-more');
+			const container = document.getElementById('posts-container');
+			const totalPosts = parseInt(button?.getAttribute('data-total-posts') || '0');
+			
+			const start = currentPage * POSTS_PER_PAGE;
+			const end = start + POSTS_PER_PAGE;
+			
+			if (start >= totalPosts) {
+				button?.remove();
+				return;
+			}
+			
+			const response = await fetch(`/api/posts?start=${start}&end=${end}`);
+			if (!response.ok) {
+				throw new Error('Error al cargar más posts');
+			}
+			
+			const data = await response.json();
+			
+			// Agregar nuevos posts al contenedor
+			container?.insertAdjacentHTML('beforeend', data.html);
+			
+			currentPage++;
+			
+			if ((currentPage * POSTS_PER_PAGE) >= totalPosts) {
+				button?.remove();
+			}
+		} catch (error) {
+			console.error('Error:', error);
+		}
+	});
+</script>

@@ -1,0 +1,163 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Sobre mí | trianadev">
+	<div class="space-y-24">
+		<!-- Hero Section -->
+		<section class="grid md:grid-cols-2 gap-12 items-center">
+			<div class="space-y-6 order-2 md:order-1">
+				<h1 class="text-4xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent inline-block">
+					¡Hola! Soy Tu Nombre
+				</h1>
+				<div class="prose prose-lg dark:prose-invert">
+					<p class="text-gray-600 dark:text-gray-400">
+						Soy un desarrollador Full Stack apasionado por crear experiencias web excepcionales. Con más de 5 años de experiencia en el desarrollo de software, me especializo en tecnologías modernas como React, Node.js y arquitecturas cloud.
+					</p>
+					<p class="text-gray-600 dark:text-gray-400">
+						Me encanta compartir conocimientos y contribuir a la comunidad de desarrollo. Cuando no estoy programando, me encontrarás escribiendo artículos técnicos o participando en eventos de tecnología.
+					</p>
+				</div>
+				<div class="flex gap-4">
+					<a
+						href="https://github.com/yourusername"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-full transition-colors duration-300"
+					>
+						<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+							<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+						</svg>
+						GitHub
+					</a>
+					<a
+						href="https://linkedin.com/in/yourusername"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="inline-flex items-center justify-center px-6 py-3 text-base font-medium border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-full transition-all duration-300"
+					>
+						<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+							<path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+						</svg>
+						LinkedIn
+					</a>
+				</div>
+			</div>
+			<div class="relative order-1 md:order-2">
+				<div class="aspect-square w-64 mx-auto md:w-96">
+					<img
+						src="https://avatars.githubusercontent.com/u/1?v=4"
+						alt="Tu Nombre"
+						class="rounded-full w-full h-full object-cover border-8 border-primary-500/20"
+					/>
+				</div>
+			</div>
+		</section>
+
+		<!-- Work Experience Section -->
+		<section class="space-y-8">
+			<h2 class="text-3xl font-bold text-center bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent inline-block">
+				Lugares en los que he trabajado
+			</h2>
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+				<!-- Company 1 -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
+					<div class="space-y-4">
+						<img
+							src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Amazon_icon.svg/2500px-Amazon_icon.svg.png"
+							alt="Amazon"
+							class="h-12 w-auto"
+						/>
+						<div>
+							<h3 class="text-xl font-bold">Senior Software Engineer</h3>
+							<p class="text-gray-600 dark:text-gray-400">Amazon</p>
+							<p class="text-sm text-gray-500 dark:text-gray-500">2020 - Presente</p>
+						</div>
+						<p class="text-gray-600 dark:text-gray-400">
+							Desarrollo de soluciones escalables para el equipo de AWS Lambda.
+						</p>
+					</div>
+				</div>
+
+				<!-- Company 2 -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
+					<div class="space-y-4">
+						<img
+							src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/2560px-Google_2015_logo.svg.png"
+							alt="Google"
+							class="h-12 w-auto"
+						/>
+						<div>
+							<h3 class="text-xl font-bold">Software Engineer</h3>
+							<p class="text-gray-600 dark:text-gray-400">Google</p>
+							<p class="text-sm text-gray-500 dark:text-gray-500">2018 - 2020</p>
+						</div>
+						<p class="text-gray-600 dark:text-gray-400">
+							Desarrollo de características clave para Google Cloud Platform.
+						</p>
+					</div>
+				</div>
+
+				<!-- Company 3 -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
+					<div class="space-y-4">
+						<img
+							src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/2560px-Microsoft_logo.svg.png"
+							alt="Microsoft"
+							class="h-12 w-auto"
+						/>
+						<div>
+							<h3 class="text-xl font-bold">Software Developer</h3>
+							<p class="text-gray-600 dark:text-gray-400">Microsoft</p>
+							<p class="text-sm text-gray-500 dark:text-gray-500">2016 - 2018</p>
+						</div>
+						<p class="text-gray-600 dark:text-gray-400">
+							Desarrollo de componentes para Microsoft Azure.
+						</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Skills Section -->
+		<section class="space-y-8">
+			<h2 class="text-3xl font-bold text-center bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent inline-block">
+				Tecnologías
+			</h2>
+			<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="text-4xl mb-2">⚛️</div>
+					<h3 class="font-medium">React</h3>
+				</div>
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="text-4xl mb-2">📱</div>
+					<h3 class="font-medium">React Native</h3>
+				</div>
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="text-4xl mb-2">🟩</div>
+					<h3 class="font-medium">Node.js</h3>
+				</div>
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="text-4xl mb-2">🎯</div>
+					<h3 class="font-medium">TypeScript</h3>
+				</div>
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="text-4xl mb-2">🎨</div>
+					<h3 class="font-medium">Tailwind CSS</h3>
+				</div>
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="text-4xl mb-2">📊</div>
+					<h3 class="font-medium">GraphQL</h3>
+				</div>
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="text-4xl mb-2">☁️</div>
+					<h3 class="font-medium">AWS</h3>
+				</div>
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="text-4xl mb-2">🐳</div>
+					<h3 class="font-medium">Docker</h3>
+				</div>
+			</div>
+		</section>
+	</div>
+</Layout>
