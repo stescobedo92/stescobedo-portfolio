@@ -44,19 +44,45 @@ const { Content } = await post.render();
 
         <!-- Author Info -->
         <div class="flex items-center justify-center gap-4 pt-4">
-          <img
-            src={post.data.author.avatar}
-            alt={post.data.author.name}
-            class="w-12 h-12 rounded-full border-2 border-primary-500"
-          />
-          <div class="text-left">
-            <div class="font-medium">{post.data.author.name}</div>
-            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <span>{post.data.readingTime} min de lectura</span>
-              <span>•</span>
-              <span>{format(post.data.pubDate, "d MMM, yyyy", { locale: es })}</span>
-            </div>
-          </div>
+          {
+            /* Resolve author avatar: prefer local public image if frontmatter is missing or points to a non-raw GitHub URL */
+          }
+          {(() => {
+            const author = (post.data as any).author || {};
+            const name = author.name || 'Autor';
+            let avatar: string = author.avatar || '';
+
+            // If avatar is a GitHub blob URL (not directly renderable), or empty, fallback to local public image
+            const isGithubBlob = typeof avatar === 'string' && avatar.includes('github.com') && avatar.includes('/blob/');
+            const isEmpty = !avatar || typeof avatar !== 'string';
+
+            // If it is a raw GitHub URL, we could normalize to raw.githubusercontent.com
+            const isGithubRaw = typeof avatar === 'string' && (avatar.includes('raw.githubusercontent.com') || avatar.endsWith('.svg') || avatar.endsWith('.png') || avatar.endsWith('.jpg') || avatar.endsWith('.jpeg'));
+
+            if (isEmpty || isGithubBlob) {
+              avatar = '/ste-avatar.jpeg';
+            }
+
+            return (
+              <>
+                <img
+                  src={avatar}
+                  alt={name}
+                  loading="lazy"
+                  decoding="async"
+                  class="w-12 h-12 rounded-full border-2 border-primary-500 object-cover"
+                />
+                <div class="text-left">
+                  <div class="font-medium">{name}</div>
+                  <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span>{post.data.readingTime} min de lectura</span>
+                    <span>•</span>
+                    <span>{format(post.data.pubDate, "d MMM, yyyy", { locale: es })}</span>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
     </header>

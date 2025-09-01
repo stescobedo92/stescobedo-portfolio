@@ -8,7 +8,12 @@ export async function GET({ url }) {
   const end = parseInt(searchParams.get('end') || '9');
 
   const posts = await getCollection('blog');
-  const sortedPosts = posts
+  const filteredPosts = posts.filter((post: any) => {
+    const body = post.body ?? '';
+    const description = post.data?.description ?? '';
+    return (typeof body === 'string' && body.trim().length > 0) || (typeof description === 'string' && description.trim().length > 0);
+  });
+  const sortedPosts = filteredPosts
     .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
     .slice(start, end);
 

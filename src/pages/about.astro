@@ -183,39 +183,166 @@ import Layout from '../layouts/Layout.astro';
 				Technologies
 			</h2>
 			<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="text-4xl mb-2">⚛️</div>
-					<h3 class="font-medium">React</h3>
+				<!-- React -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<circle cx="12" cy="12" r="1.5"/>
+							<ellipse cx="12" cy="12" rx="11" ry="4.5" transform="rotate(0 12 12)"/>
+							<ellipse cx="12" cy="12" rx="11" ry="4.5" transform="rotate(60 12 12)"/>
+							<ellipse cx="12" cy="12" rx="11" ry="4.5" transform="rotate(120 12 12)"/>
+						</svg>
+						<h3 class="font-medium">React</h3>
+					</div>
 				</div>
-				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="text-4xl mb-2">📱</div>
-					<h3 class="font-medium">React Native</h3>
+				<!-- React Native -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<rect x="7" y="2" width="10" height="20" rx="2"/>
+							<circle cx="12" cy="18" r="1"/>
+						</svg>
+						<h3 class="font-medium">React Native</h3>
+					</div>
 				</div>
-				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="text-4xl mb-2">🟩</div>
-					<h3 class="font-medium">Node.js</h3>
+				<!-- Node.js -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/>
+							<path d="M9 10v4a3 3 0 006 0"/>
+						</svg>
+						<h3 class="font-medium">Node.js</h3>
+					</div>
 				</div>
-				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="text-4xl mb-2">🎯</div>
-					<h3 class="font-medium">TypeScript</h3>
+				<!-- TypeScript -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<path d="M3 4h18v16H3z"/>
+							<path d="M8 9h4M10 9v6M15 15h4"/>
+						</svg>
+						<h3 class="font-medium">TypeScript</h3>
+					</div>
 				</div>
-				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="text-4xl mb-2">🎨</div>
-					<h3 class="font-medium">Tailwind CSS</h3>
+				<!-- Tailwind CSS -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-teal-500" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M12 6c-3 0-4 2-5 3 1-1 2-1 3-1 2 0 3 1 4 2 1 1 2 2 4 2 3 0 4-2 5-3-1 1-2 1-3 1-2 0-3-1-4-2-1-1-2-2-4-2z"/>
+							<path d="M7 13c-3 0-4 2-5 3 1-1 2-1 3-1 2 0 3 1 4 2 1 1 2 2 4 2 3 0 4-2 5-3-1 1-2 1-3 1-2 0-3-1-4-2-1-1-2-2-4-2z"/>
+						</svg>
+						<h3 class="font-medium">Tailwind CSS</h3>
+					</div>
 				</div>
-				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="text-4xl mb-2">📊</div>
-					<h3 class="font-medium">GraphQL</h3>
+				<!-- GraphQL -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-pink-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<polygon points="12,2 21,7 21,17 12,22 3,17 3,7"/>
+							<line x1="3" y1="7" x2="21" y2="17"/>
+							<line x1="21" y1="7" x2="3" y2="17"/>
+						</svg>
+						<h3 class="font-medium">GraphQL</h3>
+					</div>
 				</div>
-				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="text-4xl mb-2">☁️</div>
-					<h3 class="font-medium">AWS</h3>
+				<!-- AWS -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<path d="M4 15c2 2 5 3 8 3s6-1 8-3"/>
+							<path d="M6 10c1.5 1.5 3.5 2.5 6 2.5S16.5 11.5 18 10"/>
+							<path d="M8 6c1 .8 2.5 1.5 4 1.5S15 6.8 16 6"/>
+						</svg>
+						<h3 class="font-medium">AWS</h3>
+					</div>
 				</div>
-				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="text-4xl mb-2">🐳</div>
-					<h3 class="font-medium">Docker</h3>
+				<!-- Docker -->
+				<div class="bg-gray-50 dark:bg-dark-800 rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<rect x="3" y="11" width="4" height="3"/>
+							<rect x="7" y="11" width="4" height="3"/>
+							<rect x="11" y="11" width="4" height="3"/>
+							<rect x="7" y="8" width="4" height="3"/>
+							<rect x="11" y="8" width="4" height="3"/>
+							<path d="M2 16h20s-1 3-6 3H8c-5 0-6-3-6-3z"/>
+						</svg>
+						<h3 class="font-medium">Docker</h3>
+					</div>
 				</div>
 			</div>
 		</section>
+
+		<!-- Contact Section -->
+		<section class="space-y-6">
+			<h2 class="text-3xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent inline-block">Contact me</h2>
+			<div class="max-w-3xl mx-auto grid md:grid-cols-2 gap-6 items-start bg-gray-50 dark:bg-dark-800 rounded-2xl p-6">
+				<div class="space-y-3 text-gray-600 dark:text-gray-400">
+					<p>Let’s build something great together. Feel free to reach out and I’ll get back to you soon.</p>
+					<ul class="space-y-2 text-sm">
+						<li class="flex items-center gap-2"><svg class="w-4 h-4 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 8h16"/></svg> Available for freelance & collaborations</li>
+						<li class="flex items-center gap-2"><svg class="w-4 h-4 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12l8 8 8-8-8-8-8 8z"/></svg> Based in Mexico City (remote-friendly)</li>
+					</ul>
+				</div>
+				<form id="contact-form" class="grid grid-cols-1 gap-4">
+					<div class="relative">
+						<label class="block text-sm mb-1" for="name">Name</label>
+						<div class="relative">
+							<span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+								<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/><path d="M6 20c0-3.31 2.69-6 6-6s6 2.69 6 6"/></svg>
+							</span>
+							<input id="name" name="name" type="text" class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" />
+						</div>
+					</div>
+					<div>
+						<label class="block text-sm mb-1" for="email">Email</label>
+						<div class="relative">
+							<span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+								<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16v12H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+							</span>
+							<input id="email" name="email" type="email" required class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" />
+						</div>
+					</div>
+					<div>
+						<label class="block text-sm mb-1" for="message">Message</label>
+						<div class="relative">
+							<span class="pointer-events-none absolute top-3 left-3 text-gray-400">
+								<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 01-4 4H7l-4 4V5a4 4 0 014-4h10a4 4 0 014 4z"/></svg>
+							</span>
+							<textarea id="message" name="message" rows="4" required class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400"></textarea>
+						</div>
+					</div>
+					<button type="submit" class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-full transition-colors duration-300">Send</button>
+					<p id="contact-status" class="text-sm text-center text-gray-600 dark:text-gray-400"></p>
+				</form>
+			</div>
+		</section>
 	</div>
+
+<script>
+const form = document.getElementById('contact-form');
+const statusEl = document.getElementById('contact-status');
+form?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  statusEl && (statusEl.textContent = 'Sending...');
+  try {
+    const formData = new FormData(form);
+    const res = await fetch('/api/contact', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.ok && data.mailto) {
+      // trigger email client
+      window.location.href = data.mailto;
+      statusEl && (statusEl.textContent = 'Opening your email app...');
+      form.reset();
+    } else {
+      throw new Error(data.error || 'Unable to send');
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl && (statusEl.textContent = 'There was a problem sending your message.');
+  }
+});
+</script>
+
 </Layout>
