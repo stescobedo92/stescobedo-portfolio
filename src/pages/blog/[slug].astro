@@ -50,17 +50,15 @@ const { Content } = await post.render();
           {(() => {
             const author = (post.data as any).author || {};
             const name = author.name || 'Autor';
-            let avatar: string = author.avatar || '';
+            const githubUsername = 'stescobedo92';
 
-            // If avatar is a GitHub blob URL (not directly renderable), or empty, fallback to local public image
+            // Default to live GitHub avatar so it stays in sync with profile changes
+            let avatar: string = author.avatar || `https://github.com/${githubUsername}.png?size=128`;
+
+            // If an avatar is provided but is a GitHub blob (non-direct), normalize to raw; otherwise keep provided
             const isGithubBlob = typeof avatar === 'string' && avatar.includes('github.com') && avatar.includes('/blob/');
-            const isEmpty = !avatar || typeof avatar !== 'string';
-
-            // If it is a raw GitHub URL, we could normalize to raw.githubusercontent.com
-            const isGithubRaw = typeof avatar === 'string' && (avatar.includes('raw.githubusercontent.com') || avatar.endsWith('.svg') || avatar.endsWith('.png') || avatar.endsWith('.jpg') || avatar.endsWith('.jpeg'));
-
-            if (isEmpty || isGithubBlob) {
-              avatar = '/ste-avatar.jpeg';
+            if (isGithubBlob) {
+              avatar = avatar.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
             }
 
             return (
