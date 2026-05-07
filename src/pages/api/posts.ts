@@ -6,6 +6,7 @@ export async function GET({ url }) {
   const searchParams = new URL(url).searchParams;
   const start = parseInt(searchParams.get('start') || '0');
   const end = parseInt(searchParams.get('end') || '9');
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
 
   const posts = await getCollection('blog');
   const filteredPosts = posts.filter((post: any) => {
@@ -36,7 +37,7 @@ export async function GET({ url }) {
             ${post.data.description}
           </p>
           <div class="flex items-center justify-between">
-            <a href="/blog/${post.slug}" class="inline-flex items-center text-primary-500 hover:text-primary-600">
+            <a href="${base}/blog/${post.slug}" class="inline-flex items-center text-primary-500 hover:text-primary-600">
               Leer más
               <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M5 12h14m-7-7l7 7-7 7"/>

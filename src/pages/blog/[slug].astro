@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
+import Icon from '../../components/portfolio/Icon.astro';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -8,233 +9,779 @@ export async function getStaticPaths() {
   const posts = await getCollection('blog');
   return posts.map(post => ({
     params: { slug: post.slug },
-    props: { post },
+    props: { post, posts },
   }));
 }
 
-const { post } = Astro.props;
+const { post, posts } = Astro.props;
 const { Content } = await post.render();
+
+const rawBase = import.meta.env.BASE_URL || '/';
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
+
+const author = (post.data as any).author || {};
+const authorName = author.name || 'Sergio Triana';
+const githubUsername = 'stescobedo92';
+let avatar: string = author.avatar || `https://github.com/${githubUsername}.png?size=128`;
+if (typeof avatar === 'string' && avatar.includes('github.com') && avatar.includes('/blob/')) {
+  avatar = avatar.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+}
+if (typeof avatar === 'string' && avatar.startsWith('/') && !avatar.startsWith('//')) {
+  avatar = withBase(avatar);
+}
+
+// Find next/prev posts (sorted by date)
+const sortedPosts = posts
+  .filter((p: any) => !p.data.draft)
+  .sort((a: any, b: any) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const currentIndex = sortedPosts.findIndex((p: any) => p.slug === post.slug);
+const prevPost = currentIndex < sortedPosts.length - 1 ? sortedPosts[currentIndex + 1] : null;
+const nextPost = currentIndex > 0 ? sortedPosts[currentIndex - 1] : null;
+
+const formattedDate = format(post.data.pubDate, "d 'de' MMMM, yyyy", { locale: es });
+const isoDate = format(post.data.pubDate, 'yyyy.MM.dd');
+const tags = (post.data as any).tags as string[] | undefined;
 ---
 
-<Layout title={post.data.title}>
-  <article class="max-w-4xl mx-auto">
-    <!-- Hero Section -->
-    <header class="relative py-16 mb-12 overflow-hidden -mt-16 pt-32">
-      <div class="absolute inset-0 bg-gradient-to-r from-primary-500/10 to-primary-600/10 dark:from-primary-500/5 dark:to-primary-600/5 rounded-2xl"></div>
-      <div class="relative px-4 space-y-8">
-        <!-- Category and Date -->
-        <div class="flex flex-wrap items-center justify-center gap-4">
-          <span class={`bg-${post.data.categoryColor}-100 dark:bg-${post.data.categoryColor}-900/30 text-${post.data.categoryColor}-600 dark:text-${post.data.categoryColor}-400 text-sm font-medium px-3 py-1 rounded-full`}>
-            {post.data.category}
-          </span>
-          <span class="text-gray-600 dark:text-gray-400 text-sm">
-            {format(post.data.pubDate, "d 'de' MMMM, yyyy", { locale: es })}
-          </span>
+<Layout title={`${post.data.title} | Blog`}>
+  <!-- Reading progress bar -->
+  <div id="reading-progress" class="reading-progress" aria-hidden="true"></div>
+
+  <article class="article">
+    <!-- Breadcrumb / nav -->
+    <nav class="article-nav" aria-label="Article navigation">
+      <a href={withBase('blog')} class="back-link">
+        <Icon name="arrow-right" class="h-4 w-4 flip" />
+        Back to Journal
+      </a>
+      <span class="dot" aria-hidden="true">·</span>
+      <span class="article-meta-pos">
+        Article <strong>{String(currentIndex + 1).padStart(2, '0')}</strong> of <strong>{String(sortedPosts.length).padStart(2, '0')}</strong>
+      </span>
+    </nav>
+
+    <!-- Article header -->
+    <header class="article-header">
+      <div class="kicker">
+        <span class="kicker-cat">{post.data.category}</span>
+        <span class="kicker-sep" aria-hidden="true">/</span>
+        <time datetime={post.data.pubDate.toISOString()}>{isoDate}</time>
+        <span class="kicker-sep" aria-hidden="true">/</span>
+        <span>{post.data.readingTime} min read</span>
+      </div>
+
+      <h1>{post.data.title}</h1>
+
+      <p class="dek">{post.data.description}</p>
+
+      <div class="byline">
+        <img class="avatar" src={avatar} alt={authorName} loading="lazy" decoding="async" />
+        <div class="byline-info">
+          <span class="byline-name">{authorName}</span>
+          <span class="byline-role">Engineering · Backend, Cloud, Tooling</span>
         </div>
-
-        <!-- Title -->
-        <h1 class="text-4xl md:text-5xl font-bold text-center max-w-3xl mx-auto leading-tight">
-          {post.data.title}
-        </h1>
-
-        <!-- Description -->
-        <p class="text-xl text-gray-600 dark:text-gray-400 text-center max-w-2xl mx-auto">
-          {post.data.description}
-        </p>
-
-        <!-- Author Info -->
-        <div class="flex items-center justify-center gap-4 pt-4">
-          {
-            /* Resolve author avatar: prefer local public image if frontmatter is missing or points to a non-raw GitHub URL */
-          }
-          {(() => {
-            const author = (post.data as any).author || {};
-            const name = author.name || 'Autor';
-            const githubUsername = 'stescobedo92';
-
-            // Default to live GitHub avatar so it stays in sync with profile changes
-            let avatar: string = author.avatar || `https://github.com/${githubUsername}.png?size=128`;
-
-            // If an avatar is provided but is a GitHub blob (non-direct), normalize to raw; otherwise keep provided
-            const isGithubBlob = typeof avatar === 'string' && avatar.includes('github.com') && avatar.includes('/blob/');
-            if (isGithubBlob) {
-              avatar = avatar.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
-            }
-
-            return (
-              <>
-                <img
-                  src={avatar}
-                  alt={name}
-                  loading="lazy"
-                  decoding="async"
-                  class="w-12 h-12 rounded-full border-2 border-primary-500 object-cover"
-                />
-                <div class="text-left">
-                  <div class="font-medium">{name}</div>
-                  <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                    <span>{post.data.readingTime} min de lectura</span>
-                    <span>•</span>
-                    <span>{format(post.data.pubDate, "d MMM, yyyy", { locale: es })}</span>
-                  </div>
-                </div>
-              </>
-            );
-          })()}
-        </div>
+        <span class="byline-rule" aria-hidden="true"></span>
+        <span class="byline-date">Published {formattedDate}</span>
       </div>
     </header>
 
-    <!-- Table of Contents -->
-    <div class="lg:grid lg:grid-cols-[1fr_250px] lg:gap-8 px-4">
-      <!-- Main Content -->
-      <div class="prose prose-lg dark:prose-invert max-w-none">
-        <Content />
-      </div>
-
-      <!-- Sidebar -->
-      <aside class="hidden lg:block space-y-8 sticky top-24">
-        <div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6">
-          <h3 class="text-lg font-semibold mb-4">Compartir</h3>
-          <div class="flex gap-4">
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.data.title)}&url=${encodeURIComponent(`https://yourdomain.com/blog/${post.slug}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-gray-600 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
-            >
-              <span class="sr-only">Compartir en Twitter</span>
-              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
-              </svg>
-            </a>
-            <a
-              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://yourdomain.com/blog/${post.slug}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-gray-600 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
-            >
-              <span class="sr-only">Compartir en LinkedIn</span>
-              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-              </svg>
-            </a>
-          </div>
-        </div>
-
-        <div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6">
-          <h3 class="text-lg font-semibold mb-4">Newsletter</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Suscríbete para recibir las últimas actualizaciones y artículos.
-          </p>
-          <form class="space-y-4">
-            <input
-              type="email"
-              placeholder="tu@email.com"
-              class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400"
-            />
-            <button
-              type="submit"
-              class="w-full px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors"
-            >
-              Suscribirse
-            </button>
-          </form>
-        </div>
-      </aside>
+    <!-- Body -->
+    <div class="article-body">
+      <Content />
     </div>
 
-    <!-- Navigation -->
-    <div class="mt-16 pt-8 border-t border-gray-200 dark:border-dark-700">
-      <div class="flex items-center justify-between">
+    <!-- Footnote / share -->
+    <footer class="article-footer">
+      <span class="frame-corner tl" aria-hidden="true">+</span>
+      <span class="frame-corner tr" aria-hidden="true">+</span>
+      <span class="frame-corner bl" aria-hidden="true">+</span>
+      <span class="frame-corner br" aria-hidden="true">+</span>
+
+      <p class="footer-eyebrow">Footnote</p>
+      <p class="footer-text">
+        Thanks for reading. If this resonated, I'd love to hear what you took away — or where I got it wrong.
+      </p>
+
+      <div class="share-row">
+        <span class="share-label">Share</span>
         <a
-          href="/blog"
-          class="inline-flex items-center px-6 py-3 text-base font-medium border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-full transition-all duration-300"
+          class="share-btn"
+          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.data.title)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Share on X"
         >
-          <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5m7 7l-7-7 7-7"/>
-          </svg>
-          Volver al blog
+          <Icon name="external" class="h-4 w-4" />
+          X / Twitter
         </a>
-        <button
-          id="scroll-to-top"
-          class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-full transition-colors duration-300"
+        <a
+          class="share-btn"
+          href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://stescobedo92.github.io/stescobedo-portfolio/blog/${post.slug}`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Share on LinkedIn"
         >
-          <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-          </svg>
-          Volver arriba
-        </button>
+          <Icon name="linkedin" class="h-4 w-4" />
+          LinkedIn
+        </a>
       </div>
+
+      {tags && tags.length > 0 && (
+        <ul class="tags" aria-label="Tags">
+          {tags.map((tag) => <li>#{tag}</li>)}
+        </ul>
+      )}
+    </footer>
+
+    <!-- Prev / Next -->
+    {(prevPost || nextPost) && (
+      <nav class="prev-next" aria-label="Adjacent posts">
+        {prevPost ? (
+          <a class="adjacent prev" href={withBase(`blog/${prevPost.slug}`)}>
+            <span class="adj-label">
+              <Icon name="arrow-right" class="h-3 w-3 flip" />
+              Previous
+            </span>
+            <span class="adj-title">{prevPost.data.title}</span>
+            <span class="adj-meta">{prevPost.data.category} · {prevPost.data.readingTime} min</span>
+          </a>
+        ) : <span class="adjacent placeholder" aria-hidden="true"></span>}
+
+        {nextPost ? (
+          <a class="adjacent next" href={withBase(`blog/${nextPost.slug}`)}>
+            <span class="adj-label">
+              Next
+              <Icon name="arrow-right" class="h-3 w-3" />
+            </span>
+            <span class="adj-title">{nextPost.data.title}</span>
+            <span class="adj-meta">{nextPost.data.category} · {nextPost.data.readingTime} min</span>
+          </a>
+        ) : <span class="adjacent placeholder" aria-hidden="true"></span>}
+      </nav>
+    )}
+
+    <div class="article-foot-cta">
+      <a href={withBase('blog')} class="cta-back">
+        <span class="dash" aria-hidden="true"></span>
+        Return to all entries
+        <span class="dash" aria-hidden="true"></span>
+      </a>
     </div>
   </article>
 </Layout>
 
 <script>
-  document.getElementById('scroll-to-top')?.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  const initializeArticle = () => {
+    const bar = document.getElementById('reading-progress');
+    if (!bar) return;
+    if (bar.dataset.ready === 'true') return;
+    bar.dataset.ready = 'true';
+
+    const update = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      bar.style.transform = `scaleX(${Math.min(100, Math.max(0, progress)) / 100})`;
+    };
+
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  };
+
+  document.addEventListener('astro:page-load', initializeArticle);
+  initializeArticle();
 </script>
 
 <style is:global>
-  .prose {
-    @apply text-gray-900 dark:text-gray-100;
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&display=swap');
+
+  /* READING PROGRESS BAR */
+  .reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    transform-origin: left center;
+    transform: scaleX(0);
+    background: linear-gradient(90deg, rgb(110 231 183), rgb(167 243 208));
+    z-index: 60;
+    will-change: transform;
   }
-  .prose h1,
-  .prose h2,
-  .prose h3,
-  .prose h4,
-  .prose h5,
-  .prose h6 {
-    @apply text-gray-900 dark:text-gray-100 font-bold scroll-mt-20;
+
+  /* ARTICLE LAYOUT */
+  .article {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 6rem 1.25rem 5rem;
   }
-  .prose h1 {
-    @apply text-3xl md:text-4xl mb-8;
+
+  /* TOP NAV */
+  .article-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 3.5rem;
+    color: rgb(148 163 184);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
-  .prose h2 {
-    @apply text-2xl md:text-3xl mt-12 mb-6;
+
+  .article-nav .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: rgb(110 231 183);
+    text-decoration: none;
+    transition: color 180ms ease, transform 180ms ease;
   }
-  .prose h3 {
-    @apply text-xl md:text-2xl mt-8 mb-4;
+
+  .article-nav .back-link:hover {
+    color: rgb(167 243 208);
+    transform: translateX(-2px);
   }
-  .prose p {
-    @apply mb-6 leading-relaxed;
+
+  .article-nav .back-link .flip {
+    transform: rotate(180deg);
   }
-  .prose a {
-    @apply text-primary-500 hover:text-primary-600 no-underline border-b-2 border-primary-500/20 hover:border-primary-500 transition-colors;
+
+  .article-nav .dot {
+    color: rgba(187, 247, 208, 0.3);
   }
-  .prose code {
-    @apply bg-gray-100 dark:bg-dark-800 px-1.5 py-0.5 rounded text-sm font-mono;
+
+  .article-meta-pos strong {
+    color: rgb(187 247 208);
+    font-weight: 700;
   }
-  .prose pre {
-    @apply bg-gray-100 dark:bg-dark-800 p-4 rounded-lg overflow-x-auto;
+
+  /* ARTICLE HEADER */
+  .article-header {
+    margin-bottom: 4rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid rgba(187, 247, 208, 0.16);
   }
-  .prose pre code {
-    @apply bg-transparent p-0 text-sm leading-relaxed;
+
+  .kicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 1.5rem;
+    color: rgb(148 163 184);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
-  .prose img {
-    @apply rounded-lg shadow-lg my-8;
+
+  .kicker-cat {
+    color: rgb(110 231 183);
   }
-  .prose ul {
-    @apply list-disc pl-6 mb-6 space-y-2;
+
+  .kicker-sep {
+    color: rgba(187, 247, 208, 0.3);
   }
-  .prose ol {
-    @apply list-decimal pl-6 mb-6 space-y-2;
+
+  .article-header h1 {
+    margin: 0 0 1.5rem;
+    color: rgb(248 250 252);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144, 'WONK' 1;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
   }
-  .prose blockquote {
-    @apply border-l-4 border-primary-500 pl-4 italic my-8;
+
+  .article-header .dek {
+    margin: 0 0 2rem;
+    color: rgb(187 247 208);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.1rem, 1.7vw, 1.35rem);
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.55;
   }
-  .prose hr {
-    @apply my-12 border-gray-200 dark:border-dark-700;
+
+  .byline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
   }
-  .prose table {
-    @apply w-full border-collapse mb-6;
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(110, 231, 183, 0.55);
+    filter: saturate(0.9);
   }
-  .prose th,
-  .prose td {
-    @apply border border-gray-200 dark:border-dark-700 px-4 py-2;
+
+  .byline-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
   }
-  .prose th {
-    @apply bg-gray-50 dark:bg-dark-800 font-semibold;
+
+  .byline-name {
+    color: rgb(248 250 252);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.05rem;
+    font-weight: 500;
+  }
+
+  .byline-role {
+    color: rgb(148 163 184);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .byline-rule {
+    flex: 1;
+    height: 1px;
+    background: rgba(187, 247, 208, 0.16);
+    min-width: 2rem;
+  }
+
+  .byline-date {
+    color: rgb(148 163 184);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ARTICLE BODY (long-form prose) */
+  .article-body {
+    color: rgb(203 213 225);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 350;
+    line-height: 1.8;
+    letter-spacing: -0.005em;
+  }
+
+  .article-body > p:first-of-type::first-letter {
+    float: left;
+    color: rgb(110 231 183);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 4.5rem;
+    font-weight: 400;
+    font-style: italic;
+    font-variation-settings: 'opsz' 144, 'WONK' 1;
+    line-height: 0.85;
+    padding: 0.4rem 0.75rem 0 0;
+  }
+
+  .article-body p {
+    margin: 0 0 1.5rem;
+  }
+
+  .article-body h1,
+  .article-body h2,
+  .article-body h3,
+  .article-body h4 {
+    color: rgb(248 250 252);
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    scroll-margin-top: 6rem;
+  }
+
+  .article-body h2 {
+    margin: 3rem 0 1rem;
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(187, 247, 208, 0.14);
+  }
+
+  .article-body h3 {
+    margin: 2rem 0 0.8rem;
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+  }
+
+  .article-body h4 {
+    margin: 1.5rem 0 0.6rem;
+    font-size: 1.1rem;
+  }
+
+  .article-body a {
+    color: rgb(110 231 183);
+    text-decoration: none;
+    background-image: linear-gradient(transparent 92%, rgba(110, 231, 183, 0.4) 0);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    transition: color 180ms ease, background-image 220ms ease;
+  }
+
+  .article-body a:hover {
+    color: rgb(167 243 208);
+    background-image: linear-gradient(transparent 90%, rgba(110, 231, 183, 0.6) 0);
+  }
+
+  .article-body code {
+    padding: 0.12rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(187, 247, 208, 0.1);
+    color: rgb(187 247 208);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88em;
+  }
+
+  .article-body pre {
+    margin: 1.5rem 0;
+    padding: 1.25rem 1.4rem;
+    border: 1px solid rgba(187, 247, 208, 0.16);
+    border-radius: 4px;
+    background: rgb(22 30 52);
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .article-body pre code {
+    padding: 0;
+    background: transparent;
+    color: rgb(203 213 225);
+  }
+
+  .article-body ul,
+  .article-body ol {
+    margin: 0 0 1.5rem;
+    padding-left: 1.5rem;
+  }
+
+  .article-body ul li,
+  .article-body ol li {
+    margin: 0.4rem 0;
+  }
+
+  .article-body ul {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  .article-body ul li {
+    position: relative;
+    padding-left: 1.5rem;
+  }
+
+  .article-body ul li::before {
+    content: '⊕';
+    position: absolute;
+    left: 0;
+    top: 0.05em;
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.95em;
+  }
+
+  .article-body blockquote {
+    margin: 1.75rem 0;
+    padding: 0.5rem 0 0.5rem 1.4rem;
+    border-left: 2px solid rgb(110 231 183);
+    color: rgb(187 247 208);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.18rem;
+    font-style: italic;
+    font-weight: 350;
+  }
+
+  .article-body hr {
+    margin: 3rem auto;
+    width: 4rem;
+    height: 0;
+    border: 0;
+    border-top: 1px solid rgba(187, 247, 208, 0.3);
+  }
+
+  .article-body img {
+    display: block;
+    width: 100%;
+    margin: 2rem 0;
+    border: 1px solid rgba(187, 247, 208, 0.16);
+  }
+
+  .article-body table {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: collapse;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88rem;
+  }
+
+  .article-body table th,
+  .article-body table td {
+    padding: 0.7rem 0.9rem;
+    border: 1px solid rgba(187, 247, 208, 0.16);
+    text-align: left;
+  }
+
+  .article-body table th {
+    background: rgb(34 46 78);
+    color: rgb(248 250 252);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  /* ARTICLE FOOTER */
+  .article-footer {
+    position: relative;
+    margin: 4rem 0 3rem;
+    padding: 2rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    background: rgb(34 46 78);
+  }
+
+  .frame-corner {
+    position: absolute;
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1rem;
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+  }
+  .frame-corner.tl { top: -7px; left: -7px; }
+  .frame-corner.tr { top: -7px; right: -7px; }
+  .frame-corner.bl { bottom: -7px; left: -7px; }
+  .frame-corner.br { bottom: -7px; right: -7px; }
+
+  .footer-eyebrow {
+    margin: 0 0 0.5rem;
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .footer-text {
+    margin: 0 0 1.5rem;
+    color: rgb(187 247 208);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.05rem;
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.6;
+  }
+
+  .share-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+    padding-top: 1rem;
+    border-top: 1px dashed rgba(187, 247, 208, 0.18);
+  }
+
+  .share-label {
+    margin-right: 0.4rem;
+    color: rgb(148 163 184);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .share-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid rgba(187, 247, 208, 0.22);
+    color: rgb(187 247 208);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 180ms ease, border-color 180ms ease, transform 180ms ease;
+  }
+
+  .share-btn:hover {
+    color: rgb(110 231 183);
+    border-color: rgb(110 231 183);
+    transform: translateY(-1px);
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tags li {
+    color: rgb(148 163 184);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+  }
+
+  /* PREV / NEXT */
+  .prev-next {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 3rem 0;
+  }
+
+  .adjacent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1.25rem 1.4rem;
+    border: 1px solid rgba(187, 247, 208, 0.16);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 240ms ease, border-color 240ms ease, background-color 240ms ease;
+  }
+
+  .adjacent:hover {
+    transform: translateY(-3px);
+    border-color: rgba(110, 231, 183, 0.5);
+    background: rgba(110, 231, 183, 0.04);
+  }
+
+  .adjacent.placeholder {
+    visibility: hidden;
+  }
+
+  .adjacent.next {
+    text-align: right;
+  }
+
+  .adj-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .adjacent.next .adj-label {
+    justify-content: flex-end;
+  }
+
+  .adj-label .flip {
+    transform: rotate(180deg);
+  }
+
+  .adj-title {
+    color: rgb(248 250 252);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.05rem;
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  .adj-meta {
+    color: rgb(148 163 184);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* CTA back */
+  .article-foot-cta {
+    display: flex;
+    justify-content: center;
+    margin-top: 3rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid rgba(187, 247, 208, 0.16);
+  }
+
+  .cta-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color 180ms ease;
+  }
+
+  .cta-back:hover {
+    color: rgb(167 243 208);
+  }
+
+  .cta-back .dash {
+    display: inline-block;
+    width: 56px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* LIGHT MODE */
+  html:not(.dark) .article-header h1,
+  html:not(.dark) .article-body h1,
+  html:not(.dark) .article-body h2,
+  html:not(.dark) .article-body h3,
+  html:not(.dark) .article-body h4,
+  html:not(.dark) .byline-name,
+  html:not(.dark) .adj-title {
+    color: rgb(15 23 42);
+  }
+
+  html:not(.dark) .article-body,
+  html:not(.dark) .article-header .dek,
+  html:not(.dark) .footer-text {
+    color: rgb(51 65 85);
+  }
+
+  html:not(.dark) .article-body pre,
+  html:not(.dark) .article-footer {
+    background: rgb(248 250 252);
+    border-color: rgba(15, 23, 42, 0.12);
+  }
+
+  html:not(.dark) .article-body table th {
+    background: rgb(248 250 252);
+    color: rgb(15 23 42);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 700px) {
+    .article {
+      padding: 5rem 1rem 3rem;
+    }
+    .article-body {
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+    .article-body > p:first-of-type::first-letter {
+      font-size: 3.5rem;
+    }
+    .prev-next {
+      grid-template-columns: 1fr;
+    }
+    .adjacent.next {
+      text-align: left;
+    }
+    .adjacent.next .adj-label {
+      justify-content: flex-start;
+    }
   }
 </style>
