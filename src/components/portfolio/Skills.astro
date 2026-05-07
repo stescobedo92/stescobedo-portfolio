@@ -1,0 +1,357 @@
+---
+import Section from './Section.astro';
+import { primarySkills } from '../../data/portfolio';
+
+// skillicons.dev uses 'ts' for TypeScript; rest map directly
+const aliasMap: Record<string, string> = { typescript: 'ts' };
+const skills = primarySkills.map((s) => ({
+  name: s.name,
+  icon: aliasMap[s.icon] ?? s.icon,
+}));
+
+// Split into two interleaved rows so each marquee carries 6 items (when 12 skills)
+const rowA = skills.filter((_, i) => i % 2 === 0);
+const rowB = skills.filter((_, i) => i % 2 === 1);
+---
+
+<Section title="Stack" id="skills">
+  <p class="eyebrow">
+    <span class="dash" aria-hidden="true"></span>
+    Daily drivers
+    <span class="dash" aria-hidden="true"></span>
+  </p>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-num">8<span class="stat-glyph">+</span></span>
+      <span class="stat-lbl">Years building</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">{skills.length}</span>
+      <span class="stat-lbl">Languages &amp; tools</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num"><span class="stat-glyph">∞</span></span>
+      <span class="stat-lbl">Always learning</span>
+    </div>
+  </div>
+
+  <!-- AURORA-BACKED MARQUEE -->
+  <div class="marquee-frame" data-skills>
+    <span class="aurora aurora-1" aria-hidden="true"></span>
+    <span class="aurora aurora-2" aria-hidden="true"></span>
+
+    <div class="marquee" data-direction="left">
+      <ul class="marquee-track">
+        {[...rowA, ...rowA].map((skill, i) => (
+          <li class="chip" aria-hidden={i >= rowA.length ? 'true' : undefined}>
+            <span class="chip-icon">
+              <img
+                src={`https://skillicons.dev/icons?i=${skill.icon}`}
+                alt={skill.name}
+                width="40"
+                height="40"
+                loading="lazy"
+                decoding="async"
+              />
+            </span>
+            <span class="chip-name">{skill.name}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="marquee" data-direction="right">
+      <ul class="marquee-track reverse">
+        {[...rowB, ...rowB].map((skill, i) => (
+          <li class="chip" aria-hidden={i >= rowB.length ? 'true' : undefined}>
+            <span class="chip-icon">
+              <img
+                src={`https://skillicons.dev/icons?i=${skill.icon}`}
+                alt={skill.name}
+                width="40"
+                height="40"
+                loading="lazy"
+                decoding="async"
+              />
+            </span>
+            <span class="chip-name">{skill.name}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+
+  <p class="footer-note">Hover to slow · Click to bring focus.</p>
+</Section>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&display=swap');
+
+  /* SECTION EYEBROW */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: -1rem 0 2.5rem;
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow .dash {
+    width: 36px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* STATS BANNER */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin-bottom: 3rem;
+    background: rgba(187, 247, 208, 0.18);
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1.5rem 1.25rem;
+    background: rgb(34 46 78);
+    transition: background-color 240ms ease;
+  }
+
+  .stat:hover {
+    background: rgb(38 50 88);
+  }
+
+  .stat-num {
+    color: rgb(248 250 252);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2.4rem, 5vw, 3.4rem);
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144, 'WONK' 1;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .stat-glyph {
+    color: rgb(110 231 183);
+    font-style: italic;
+  }
+
+  .stat-lbl {
+    color: rgb(187 247 208);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+
+  /* MARQUEE FRAME */
+  .marquee-frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(110, 231, 183, 0.08), transparent 60%),
+      radial-gradient(ellipse at 80% 50%, rgba(52, 211, 153, 0.06), transparent 60%),
+      rgb(28 38 70);
+    border: 1px solid rgba(187, 247, 208, 0.14);
+    padding: 2.25rem 0;
+
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
+  }
+
+  /* AURORA BLOBS */
+  .aurora {
+    position: absolute;
+    z-index: 0;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    opacity: 0.55;
+  }
+
+  .aurora-1 {
+    top: -40%;
+    left: 10%;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(110, 231, 183, 0.5), transparent 70%);
+    animation: drift1 18s ease-in-out infinite alternate;
+  }
+
+  .aurora-2 {
+    bottom: -50%;
+    right: 5%;
+    width: 380px;
+    height: 380px;
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.4), transparent 70%);
+    animation: drift2 22s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift1 {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(120px, 60px) scale(1.18); }
+  }
+  @keyframes drift2 {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(-100px, -40px) scale(1.12); }
+  }
+
+  /* MARQUEE TRACK */
+  .marquee {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+
+  .marquee:last-child {
+    margin-bottom: 0;
+  }
+
+  .marquee-track {
+    display: flex;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: max-content;
+    animation: marquee-left 32s linear infinite;
+  }
+
+  .marquee-track.reverse {
+    animation-name: marquee-right;
+    animation-duration: 38s;
+  }
+
+  .marquee-frame:hover .marquee-track {
+    animation-play-state: paused;
+  }
+
+  @keyframes marquee-left {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes marquee-right {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(0); }
+  }
+
+  /* SKILL CHIP */
+  .chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 1rem 0.55rem 0.55rem;
+    border-radius: 999px;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+      rgba(22, 30, 52, 0.6);
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    box-shadow: 0 6px 20px rgba(4, 12, 32, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    color: rgb(248 250 252);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 280ms ease, box-shadow 280ms ease;
+  }
+
+  .chip:hover {
+    transform: translateY(-3px) scale(1.03);
+    border-color: rgba(110, 231, 183, 0.55);
+    box-shadow: 0 14px 36px rgba(52, 211, 153, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .chip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    background: rgba(22, 30, 52, 0.7);
+    overflow: hidden;
+  }
+
+  .chip-icon img {
+    width: 32px;
+    height: 32px;
+    display: block;
+    transition: transform 280ms ease;
+  }
+
+  .chip:hover .chip-icon img {
+    transform: scale(1.08);
+  }
+
+  .chip-name {
+    color: rgb(248 250 252);
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+  }
+
+  .footer-note {
+    margin: 1rem 0 0;
+    color: rgb(187 247 208);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-align: center;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+
+  /* LIGHT MODE */
+  :global(html:not(.dark)) .stat,
+  :global(html:not(.dark)) .marquee-frame {
+    background: rgb(248 250 252);
+  }
+
+  :global(html:not(.dark)) .stat-num,
+  :global(html:not(.dark)) .chip-name {
+    color: rgb(22 30 52);
+  }
+
+  :global(html:not(.dark)) .stat-lbl {
+    color: rgb(51 65 85);
+  }
+
+  :global(html:not(.dark)) .chip {
+    background: rgb(255 255 255);
+    border-color: rgba(15, 23, 42, 0.1);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 700px) {
+    .stats {
+      grid-template-columns: 1fr;
+    }
+    .stat {
+      padding: 1.25rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track,
+    .aurora-1,
+    .aurora-2 {
+      animation: none;
+    }
+  }
+</style>

@@ -1,0 +1,857 @@
+---
+import Section from './Section.astro';
+import Icon from './Icon.astro';
+import ProjectCover from './ProjectCover.astro';
+import { projects, profile } from '../../data/portfolio';
+
+const rawBase = import.meta.env.BASE_URL || '/';
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
+
+const featured = projects.filter((project) => project.featured);
+const otherProjects = projects.filter((project) => !project.featured);
+const pad2 = (n: number) => String(n).padStart(2, '0');
+---
+
+<Section title="Selected Work" id="projects">
+  <p class="dossier-eyebrow">
+    <span class="dash" aria-hidden="true"></span>
+    Field Reports
+    <span class="dash" aria-hidden="true"></span>
+  </p>
+
+  <ul class="dossier-list">
+    {featured.map((project, index) => (
+      <li class={`dossier ${index % 2 === 1 ? 'flip' : ''}`}>
+        <span class="frame-corner tl" aria-hidden="true">+</span>
+        <span class="frame-corner tr" aria-hidden="true">+</span>
+        <span class="frame-corner bl" aria-hidden="true">+</span>
+        <span class="frame-corner br" aria-hidden="true">+</span>
+
+        <a class="dossier-image" href={project.github} target="_blank" rel="noopener noreferrer" aria-label={`${project.name} repository`}>
+          <span class="dossier-tag">Nº {pad2(index + 1)}</span>
+          {project.cover ? (
+            <ProjectCover variant={project.cover} name={project.name} tech={project.tech} />
+          ) : (
+            <img src={withBase(project.image)} alt={`Screenshot of ${project.name}`} loading={index === 0 ? 'eager' : 'lazy'} />
+          )}
+          <span class="image-frame" aria-hidden="true"></span>
+        </a>
+
+        <div class="dossier-body">
+          <p class="dossier-kicker">Report Nº {pad2(index + 1)}</p>
+          <h3>
+            <a href={project.github} target="_blank" rel="noopener noreferrer">{project.name}</a>
+          </h3>
+          <p class="dossier-lede">{project.description}</p>
+          <ul class="dossier-bullets">
+            {project.highlights.map((highlight) => <li>{highlight}</li>)}
+          </ul>
+          <ul class="dossier-tech" aria-label="Tech stack">
+            {project.tech.map((tech) => <li>{tech}</li>)}
+          </ul>
+          <div class="dossier-links">
+            <a href={project.github} target="_blank" rel="noopener noreferrer" aria-label={`${project.name} on GitHub`}>
+              <Icon name="github" class="h-5 w-5" />
+              <span>Source</span>
+            </a>
+            {project.demo && (
+              <a href={project.demo} target="_blank" rel="noopener noreferrer" aria-label={`${project.name} demo`}>
+                <Icon name="external" class="h-5 w-5" />
+                <span>Live</span>
+              </a>
+            )}
+          </div>
+        </div>
+      </li>
+    ))}
+  </ul>
+</Section>
+
+<section
+  class="other-projects"
+  aria-labelledby="other-projects-title"
+  data-github-user={profile.githubUsername}
+>
+  <div class="index-head">
+    <span class="index-num">→</span>
+    <h2 id="other-projects-title">Project Index</h2>
+    <span class="index-rule" aria-hidden="true"></span>
+    <a class="index-link" href={withBase('blog')}>View the archive →</a>
+  </div>
+
+  <ul class="grid" id="project-grid">
+    {otherProjects.map((project, idx) => (
+      <li class="project-card" data-github-repo={project.githubRepo} data-repo-name={project.githubRepo?.split('/')[1] ?? project.name}>
+        <article>
+          <header>
+            <span class="card-num">{pad2(idx + 1)}</span>
+            <div class="card-links">
+              <a href={project.github} target="_blank" rel="noopener noreferrer" aria-label={`${project.name} on GitHub`}>
+                <Icon name="github" class="h-5 w-5" />
+              </a>
+              {project.demo && (
+                <a href={project.demo} target="_blank" rel="noopener noreferrer" aria-label={`${project.name} demo`}>
+                  <Icon name="external" class="h-5 w-5" />
+                </a>
+              )}
+            </div>
+          </header>
+          <h3>
+            <a class="repo-title" href={project.github} target="_blank" rel="noopener noreferrer">{project.name}</a>
+            {project.active && <span class="active-dot">● Active</span>}
+          </h3>
+          <p class="repo-description">{project.description}</p>
+          <footer class="repo-languages" aria-label={`${project.name} technologies`}>
+            {project.tech.slice(0, 6).map((tech) => <span>{tech}</span>)}
+          </footer>
+        </article>
+      </li>
+    ))}
+  </ul>
+  <div class="index-footer">
+    <button id="toggle-projects" class="show-more" type="button" aria-expanded="false">
+      <span class="dash" aria-hidden="true"></span>
+      <span>Show more from GitHub</span>
+      <span class="dash" aria-hidden="true"></span>
+    </button>
+  </div>
+</section>
+
+<script>
+  type GitHubRepo = {
+    name: string;
+    full_name: string;
+    description: string | null;
+    html_url: string;
+    homepage: string | null;
+    fork: boolean;
+    archived: boolean;
+    private: boolean;
+    languages_url: string;
+    pushed_at: string;
+    owner: { login: string };
+  };
+
+  const PAGE_SIZE = 3;
+  const repoCache = new Map<string, GitHubRepo[]>();
+
+  const fetchOwnedRepos = async (user: string): Promise<GitHubRepo[]> => {
+    const cached = repoCache.get(user);
+    if (cached) return cached;
+    try {
+      const response = await fetch(
+        `https://api.github.com/users/${encodeURIComponent(user)}/repos?per_page=100&sort=pushed&type=owner`,
+        { headers: { Accept: 'application/vnd.github+json' } },
+      );
+      if (!response.ok) return [];
+      const data = (await response.json()) as GitHubRepo[];
+      const owned = data.filter(
+        (repo) =>
+          !repo.fork &&
+          !repo.private &&
+          repo.owner?.login?.toLowerCase() === user.toLowerCase(),
+      );
+      repoCache.set(user, owned);
+      return owned;
+    } catch {
+      return [];
+    }
+  };
+
+  const fetchLanguages = async (url: string): Promise<string[]> => {
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: 'application/vnd.github+json' },
+      });
+      if (!response.ok) return [];
+      const data = (await response.json()) as Record<string, number>;
+      return Object.entries(data)
+        .sort(([, bytesA], [, bytesB]) => bytesB - bytesA)
+        .slice(0, 6)
+        .map(([language]) => language);
+    } catch {
+      return [];
+    }
+  };
+
+  const safeUrl = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    return /^https?:\/\//i.test(value) ? value : null;
+  };
+
+  const buildProjectCard = (
+    template: HTMLLIElement,
+    repo: GitHubRepo,
+    index: number,
+  ): HTMLLIElement => {
+    const li = template.cloneNode(true) as HTMLLIElement;
+    li.className = 'project-card revealed';
+    delete li.dataset.githubReady;
+    li.dataset.githubRepo = repo.full_name;
+    li.dataset.repoName = repo.name;
+
+    const repoUrl = safeUrl(repo.html_url) ?? `https://github.com/${repo.full_name}`;
+
+    const numEl = li.querySelector('.card-num');
+    if (numEl) numEl.textContent = String(index + 1).padStart(2, '0');
+
+    const cardLinks = li.querySelector('.card-links');
+    if (cardLinks) {
+      const links = Array.from(cardLinks.querySelectorAll<HTMLAnchorElement>('a'));
+      const githubLink = links[0];
+      if (githubLink) {
+        githubLink.href = repoUrl;
+        githubLink.setAttribute('aria-label', `${repo.name} on GitHub`);
+      }
+      for (let i = 1; i < links.length; i++) {
+        links[i].remove();
+      }
+    }
+
+    li.querySelector('.active-dot')?.remove();
+
+    const titleLink = li.querySelector<HTMLAnchorElement>('.repo-title');
+    if (titleLink) {
+      titleLink.href = repoUrl;
+      titleLink.textContent = repo.name;
+    }
+
+    const description = li.querySelector<HTMLElement>('.repo-description');
+    if (description) {
+      description.textContent = repo.description ?? 'A repository on GitHub.';
+    }
+
+    const footer = li.querySelector<HTMLElement>('.repo-languages');
+    if (footer) {
+      footer.replaceChildren();
+      footer.setAttribute('aria-label', `${repo.name} technologies`);
+    }
+
+    return li;
+  };
+
+  const findScopeAttribute = (element: Element): string | null => {
+    for (const attr of Array.from(element.attributes)) {
+      if (attr.name.startsWith('data-astro-cid')) return attr.name;
+    }
+    return null;
+  };
+
+  const populateLanguages = async (card: HTMLElement, repo: GitHubRepo) => {
+    const target = card.querySelector<HTMLElement>('.repo-languages');
+    if (!target) return;
+    const languages = await fetchLanguages(repo.languages_url);
+    if (languages.length === 0) return;
+    const scopeAttr = findScopeAttribute(target);
+    target.replaceChildren(
+      ...languages.map((language) => {
+        const span = document.createElement('span');
+        span.textContent = language;
+        if (scopeAttr) span.setAttribute(scopeAttr, '');
+        return span;
+      }),
+    );
+  };
+
+  const initializeProjects = () => {
+    const section = document.querySelector<HTMLElement>('.other-projects');
+    const button = document.getElementById('toggle-projects') as HTMLButtonElement | null;
+    const grid = document.getElementById('project-grid');
+    if (!section || !button || !grid || button.dataset.ready === 'true') return;
+    button.dataset.ready = 'true';
+
+    const user = section.dataset.githubUser;
+    const template = grid.querySelector<HTMLLIElement>('.project-card');
+    if (!user || !template) {
+      button.hidden = true;
+      return;
+    }
+
+    const collectShownNames = () => {
+      const names = new Set<string>();
+      grid.querySelectorAll<HTMLElement>('.project-card').forEach((card) => {
+        const explicit = card.dataset.repoName?.trim().toLowerCase();
+        if (explicit) names.add(explicit);
+      });
+      return names;
+    };
+
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const label = button.querySelector('span:not(.dash)');
+      const previousLabel = label?.textContent ?? 'Show more from GitHub';
+      if (label) label.textContent = 'Loading…';
+
+      const repos = await fetchOwnedRepos(user);
+      const shown = collectShownNames();
+      const remaining = repos.filter((repo) => !shown.has(repo.name.toLowerCase()));
+      const next = remaining.slice(0, PAGE_SIZE);
+      const baseIndex = grid.querySelectorAll('.project-card').length;
+
+      next.forEach((repo, index) => {
+        const card = buildProjectCard(template, repo, baseIndex + index);
+        grid.appendChild(card);
+        window.setTimeout(() => {
+          void populateLanguages(card, repo);
+        }, index * 60);
+      });
+
+      button.setAttribute('aria-expanded', 'true');
+      if (label) label.textContent = previousLabel;
+      button.disabled = false;
+
+      if (remaining.length <= PAGE_SIZE || next.length === 0) {
+        button.hidden = true;
+      }
+    });
+  };
+
+  document.addEventListener('astro:page-load', initializeProjects);
+  initializeProjects();
+</script>
+
+<style>
+  /* Bring the same display serif used in the journal */
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&display=swap');
+
+  :root {
+    --display: 'Fraunces', 'Times New Roman', Georgia, serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* SECTION EYEBROW */
+  .dossier-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: -1rem 0 3rem;
+    color: rgb(110 231 183);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .dossier-eyebrow .dash {
+    width: 36px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* DOSSIER LIST (featured) */
+  .dossier-list,
+  .grid,
+  .dossier-bullets,
+  .dossier-tech,
+  .dossier-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .dossier {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+    gap: 0;
+    max-width: 760px;
+    margin: 0 auto 2rem;
+    border: 1px solid rgba(187, 247, 208, 0.16);
+    background: rgb(34 46 78);
+    transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 320ms ease, box-shadow 320ms ease;
+  }
+
+  .dossier:hover,
+  .dossier:focus-within {
+    transform: translateY(-6px);
+    border-color: rgba(110, 231, 183, 0.55);
+    box-shadow: 0 32px 80px rgba(4, 12, 32, 0.45);
+  }
+
+  .dossier:last-child {
+    margin-bottom: 0;
+  }
+
+  .dossier.flip {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  }
+
+  .dossier.flip .dossier-image {
+    order: 2;
+  }
+
+  .frame-corner {
+    position: absolute;
+    color: rgb(110 231 183);
+    font-family: var(--mono);
+    font-size: 1rem;
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .frame-corner.tl { top: -7px; left: -7px; }
+  .frame-corner.tr { top: -7px; right: -7px; }
+  .frame-corner.bl { bottom: -7px; left: -7px; }
+  .frame-corner.br { bottom: -7px; right: -7px; }
+
+  /* IMAGE */
+  .dossier-image {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 16 / 11;
+    background:
+      linear-gradient(135deg, rgba(110, 231, 183, 0.08), transparent 60%),
+      rgb(22 30 52);
+  }
+
+  .dossier-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 480ms ease, filter 480ms ease;
+    filter: saturate(0.85);
+  }
+
+  .dossier:hover .dossier-image img {
+    transform: scale(1.03);
+    filter: saturate(1.05);
+  }
+
+  .dossier-tag {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 2;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid rgba(110, 231, 183, 0.5);
+    background: rgba(22, 30, 52, 0.85);
+    color: rgb(110 231 183);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    backdrop-filter: blur(8px);
+  }
+
+  .image-frame {
+    position: absolute;
+    inset: 1rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    pointer-events: none;
+  }
+
+  /* BODY */
+  .dossier-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: clamp(0.95rem, 1.8vw, 1.35rem) clamp(1rem, 2vw, 1.5rem);
+  }
+
+  .dossier-kicker {
+    margin: 0;
+    color: rgb(148 163 184);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .dossier-body h3 {
+    margin: 0;
+    color: rgb(248 250 252);
+    font-family: var(--display);
+    font-size: clamp(1.1rem, 1.9vw, 1.4rem);
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144, 'WONK' 1;
+    letter-spacing: -0.012em;
+    line-height: 1.15;
+  }
+
+  .dossier-body h3 a {
+    color: inherit;
+    text-decoration: none;
+    background-image: linear-gradient(transparent 92%, rgba(110, 231, 183, 0.5) 0);
+    background-size: 0% 100%;
+    background-repeat: no-repeat;
+    transition: background-size 360ms ease, color 220ms ease;
+  }
+
+  .dossier:hover .dossier-body h3 a {
+    background-size: 100% 100%;
+    color: rgb(167 243 208);
+  }
+
+  .dossier-lede {
+    margin: 0;
+    color: rgb(203 213 225);
+    font-family: var(--display);
+    font-size: 0.84rem;
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .dossier-bullets {
+    display: grid;
+    gap: 0.25rem;
+    color: rgb(203 213 225);
+  }
+
+  .dossier-bullets li {
+    position: relative;
+    padding-left: 1.1rem;
+    font-family: var(--display);
+    font-size: 0.78rem;
+    font-weight: 300;
+    line-height: 1.45;
+  }
+
+  .dossier-bullets li::before {
+    content: '⊕';
+    position: absolute;
+    left: 0;
+    top: 0.05em;
+    color: rgb(110 231 183);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+  }
+
+  .dossier-tech {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.55rem;
+    margin-top: 0.4rem;
+  }
+
+  .dossier-tech li {
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    padding: 0.12rem 0.5rem;
+    color: rgb(187 247 208);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+  }
+
+  .dossier-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.6rem;
+  }
+
+  .dossier-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: rgb(187 247 208);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color 200ms ease, transform 200ms ease;
+  }
+
+  .dossier-links a:hover {
+    color: rgb(110 231 183);
+    transform: translateY(-2px);
+  }
+
+  /* PROJECT INDEX */
+  .other-projects {
+    max-width: 1180px;
+    margin: 4rem auto 6rem;
+    padding: 0 1.5rem;
+  }
+
+  .index-head {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .index-num {
+    color: rgb(110 231 183);
+    font-family: var(--mono);
+    font-size: 1rem;
+    letter-spacing: 0.18em;
+  }
+
+  .index-head h2 {
+    margin: 0;
+    color: rgb(248 250 252);
+    font-family: var(--display);
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    font-weight: 400;
+    font-style: italic;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: -0.01em;
+  }
+
+  .index-rule {
+    flex: 1;
+    height: 1px;
+    background: rgba(187, 247, 208, 0.16);
+  }
+
+  .index-link {
+    color: rgb(110 231 183);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color 200ms ease;
+  }
+
+  .index-link:hover {
+    color: rgb(167 243 208);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 2rem;
+  }
+
+  .project-card {
+    position: relative;
+  }
+
+  .project-card.revealed {
+    animation: reveal 360ms ease both;
+  }
+
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .project-card article {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    border: 1px solid rgba(187, 247, 208, 0.14);
+    background: rgb(34 46 78);
+    padding: 1.4rem;
+    transition: transform 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+  }
+
+  .project-card article::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, rgb(110 231 183), transparent 70%);
+    opacity: 0;
+    transition: opacity 240ms ease;
+  }
+
+  .project-card:hover article {
+    transform: translateY(-5px);
+    border-color: rgba(110, 231, 183, 0.45);
+    box-shadow: 0 20px 50px rgba(4, 12, 32, 0.42);
+  }
+
+  .project-card:hover article::before {
+    opacity: 1;
+  }
+
+  .project-card header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+    color: rgb(110 231 183);
+  }
+
+  .card-num {
+    color: rgb(110 231 183);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+  }
+
+  .card-links {
+    display: flex;
+    gap: 0.7rem;
+  }
+
+  .card-links a {
+    color: rgb(187 247 208);
+    transition: color 180ms ease, transform 180ms ease;
+  }
+
+  .card-links a:hover {
+    color: rgb(110 231 183);
+    transform: translateY(-2px);
+  }
+
+  .project-card h3 {
+    margin: 0 0 0.6rem;
+    color: rgb(248 250 252);
+    font-family: var(--display);
+    font-size: 1.3rem;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+
+  .repo-title {
+    color: inherit;
+    text-decoration: none;
+    transition: color 180ms ease;
+  }
+
+  .project-card:hover .repo-title {
+    color: rgb(167 243 208);
+  }
+
+  .active-dot {
+    display: inline-block;
+    margin-left: 0.4rem;
+    color: rgb(110 231 183);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    vertical-align: middle;
+  }
+
+  .repo-description {
+    flex: 1;
+    margin: 0;
+    color: rgb(203 213 225);
+    font-family: var(--display);
+    font-size: 0.95rem;
+    font-weight: 300;
+    line-height: 1.55;
+  }
+
+  .repo-languages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+    margin-top: 1.25rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid rgba(187, 247, 208, 0.14);
+  }
+
+  .repo-languages span {
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    padding: 0.15rem 0.55rem;
+    color: rgb(187 247 208);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* INDEX FOOTER (Show More) */
+  .index-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.5rem;
+  }
+
+  .show-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    border: 0;
+    background: transparent;
+    padding: 0.9rem 0;
+    color: rgb(110 231 183);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    transition: color 180ms ease, transform 180ms ease;
+  }
+
+  .show-more .dash {
+    display: inline-block;
+    width: 56px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  .show-more:hover,
+  .show-more:focus-visible {
+    color: rgb(167 243 208);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .show-more[disabled] {
+    opacity: 0.5;
+    cursor: wait;
+  }
+
+  /* LIGHT MODE */
+  :global(html:not(.dark)) .dossier,
+  :global(html:not(.dark)) .project-card article {
+    background: rgb(248 250 252);
+    border-color: rgba(15, 23, 42, 0.14);
+  }
+
+  :global(html:not(.dark)) .dossier-body h3,
+  :global(html:not(.dark)) .project-card h3,
+  :global(html:not(.dark)) .index-head h2 {
+    color: rgb(15 23 42);
+  }
+
+  :global(html:not(.dark)) .dossier-lede,
+  :global(html:not(.dark)) .repo-description,
+  :global(html:not(.dark)) .dossier-bullets {
+    color: rgb(51 65 85);
+  }
+
+  :global(html:not(.dark)) .dossier-tech li,
+  :global(html:not(.dark)) .repo-languages span {
+    color: rgb(51 65 85);
+    border-color: rgba(15, 23, 42, 0.18);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .dossier,
+    .dossier.flip {
+      grid-template-columns: 1fr;
+    }
+    .dossier.flip .dossier-image {
+      order: 0;
+    }
+    .dossier-image {
+      aspect-ratio: 16 / 9;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .dossier-body {
+      padding: 1.4rem;
+    }
+    .grid {
+      grid-template-columns: 1fr;
+    }
+    .index-head {
+      flex-wrap: wrap;
+    }
+    .index-rule {
+      display: none;
+    }
+  }
+</style>

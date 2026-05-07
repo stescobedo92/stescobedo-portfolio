@@ -1,0 +1,129 @@
+---
+interface Props {
+  text?: string;
+  texts?: string[];
+  speed?: number;
+  delay?: number;
+  loop?: boolean;
+  class?: string;
+}
+
+const {
+  text = '',
+  texts = [],
+  speed = 70,
+  delay = 700,
+  loop = false,
+  class: className = '',
+} = Astro.props;
+
+const id = `typed-${crypto.randomUUID()}`;
+const values = texts.length > 0 ? texts : [text].filter(Boolean);
+---
+
+<span
+  id={id}
+  class={`typed-text ${className}`}
+  data-values={JSON.stringify(values)}
+  data-speed={speed}
+  data-delay={delay}
+  data-loop={loop ? 'true' : 'false'}
+>
+  <span class="typed-content">{values.join(' / ')}</span><span class="typed-cursor" aria-hidden="true">|</span>
+</span>
+
+<script>
+  const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const initializeTypedText = () => {
+    document.querySelectorAll<HTMLElement>('.typed-text').forEach((element) => {
+      if (element.dataset.ready === 'true') return;
+      element.dataset.ready = 'true';
+
+      const content = element.querySelector<HTMLElement>('.typed-content');
+      const cursor = element.querySelector<HTMLElement>('.typed-cursor');
+      const values = JSON.parse(element.dataset.values || '[]') as string[];
+      const speed = Number(element.dataset.speed || 70);
+      const delay = Number(element.dataset.delay || 700);
+      const loop = element.dataset.loop === 'true';
+      if (!content || values.length === 0) return;
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        cursor?.classList.add('hidden');
+        return;
+      }
+
+      const type = async (value: string) => {
+        for (let index = 0; index <= value.length; index += 1) {
+          content.textContent = value.slice(0, index);
+          await sleep(speed);
+        }
+      };
+
+      const erase = async (value: string) => {
+        for (let index = value.length; index >= 0; index -= 1) {
+          content.textContent = value.slice(0, index);
+          await sleep(speed / 2);
+        }
+      };
+
+      const run = async () => {
+        content.textContent = '';
+        cursor?.classList.add('active');
+        await sleep(delay);
+        do {
+          for (const value of values) {
+            await type(value);
+            if (loop || value !== values[values.length - 1]) {
+              await sleep(1400);
+              await erase(value);
+            }
+          }
+        } while (loop);
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        observer.disconnect();
+        void run();
+      }, { rootMargin: '80px' });
+
+      observer.observe(element);
+    });
+  };
+
+  document.addEventListener('astro:page-load', initializeTypedText);
+  initializeTypedText();
+</script>
+
+<style>
+  .typed-text {
+    display: inline-block;
+  }
+
+  .typed-cursor {
+    display: inline-block;
+    margin-left: 2px;
+    opacity: 0;
+  }
+
+  .typed-cursor.active {
+    animation: blink 1s infinite;
+    opacity: 1;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  @keyframes blink {
+    0%,
+    50% {
+      opacity: 1;
+    }
+    51%,
+    100% {
+      opacity: 0;
+    }
+  }
+</style>
