@@ -1,120 +1,1607 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Icon from '../components/portfolio/Icon.astro';
 import { getCollection } from 'astro:content';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { profile } from '../data/portfolio';
 
 const POSTS_PER_PAGE = 9;
 
-const posts = await getCollection('blog');
-// Mostrar solo posts que tengan contenido (cuerpo o descripción)
-const filteredPosts = posts.filter((post) => {
-	const body = (post as any).body ?? '';
-	const description = (post.data as any)?.description ?? '';
-	return (typeof body === 'string' && body.trim().length > 0) || (typeof description === 'string' && description.trim().length > 0);
-});
-const sortedPosts = filteredPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const rawBase = import.meta.env.BASE_URL || '/';
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
+
+const allPosts = await getCollection('blog');
+const visiblePosts = allPosts
+  .filter((post) => !post.data.draft)
+  .filter((post) => {
+    const body = (post as any).body ?? '';
+    const description = post.data?.description ?? '';
+    return (typeof body === 'string' && body.trim().length > 0) || description.trim().length > 0;
+  })
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const featuredFlagged = visiblePosts.filter((post) => post.data.featured);
+const heroPost = (featuredFlagged.length > 0 ? featuredFlagged : visiblePosts)[0];
+const restPosts = visiblePosts.filter((post) => post.slug !== heroPost?.slug);
+
+const categorySet = new Set<string>();
+visiblePosts.forEach((post) => categorySet.add(post.data.category));
+const categories = Array.from(categorySet);
+
+const initialPage = restPosts.slice(0, POSTS_PER_PAGE);
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+// Total bytes (mock — derived from words count for visual flavor)
+const wordsOf = (post: any) => {
+  const body = post.body ?? post.data.description ?? '';
+  return typeof body === 'string' ? body.trim().split(/\s+/).filter(Boolean).length : 0;
+};
+
+const totalWords = visiblePosts.reduce((acc, p) => acc + wordsOf(p), 0);
+const totalBytes = totalWords * 6; // ~6 bytes/word, rough mock
+const formatBytes = (n: number) => {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+// Latest commit (most recent post date)
+const latestDate = visiblePosts[0]?.data.pubDate ?? new Date();
+const lastCommitAgo = formatDistanceToNow(latestDate, { addSuffix: true });
+
+// Helper to format file size for each post (deterministic)
+const fileBytes = (post: any) => Math.max(512, wordsOf(post) * 6 + (post.slug.length * 17));
+
+// Build a slug-based mock SHA per post (deterministic short hash)
+const shortSha = (input: string) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0').slice(0, 7);
+};
+
+const formatDate = (date: Date) => format(date, "d 'de' MMM, yyyy", { locale: es });
+const isoFormat = (date: Date) => format(date, 'yyyy-MM-dd');
+
+// "Commit message" generated from the post description (clipped) for the file row
+const commitMsg = (post: any) => {
+  const desc = post.data.description ?? post.data.title ?? '';
+  return desc.length > 80 ? `${desc.slice(0, 77)}…` : desc;
+};
 ---
 
-<Layout title="Blog">
-	<div class="space-y-12">
-		<header class="text-center space-y-4">
-			<h1 class="text-4xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent inline-block">
-				Blog
-			</h1>
-			<p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-				Explora mis artículos sobre desarrollo, tecnología y experiencias en el mundo del software.
-			</p>
-		</header>
+<Layout title="docs/ | Sergio Triana">
+  <article class="repo">
+    <!-- ════════  REPOSITORY HEADER  ════════ -->
+    <header class="repo-header">
+      <div class="repo-path">
+        <span class="repo-glyph" aria-hidden="true">⌗</span>
+        <a href={`https://github.com/${profile.githubUsername}`} target="_blank" rel="noopener noreferrer" class="repo-owner">{profile.githubUsername}</a>
+        <span class="repo-slash" aria-hidden="true">/</span>
+        <span class="repo-name">journal</span>
+        <span class="repo-tag">public</span>
+      </div>
 
-		<div id="posts-container" class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-			{sortedPosts.slice(0, POSTS_PER_PAGE).map(post => (
-				<article class="group">
-					<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
-						<div class="space-y-4">
-							<div class="flex items-center gap-2">
-								<span class={`bg-${post.data.categoryColor}-100 dark:bg-${post.data.categoryColor}-900/30 text-${post.data.categoryColor}-600 dark:text-${post.data.categoryColor}-400 text-sm font-medium px-2.5 py-0.5 rounded-full`}>
-									{post.data.category}
-								</span>
-								<span class="text-gray-500 dark:text-gray-400 text-sm">
-									{format(post.data.pubDate, "d 'de' MMMM, yyyy", { locale: es })}
-								</span>
-							</div>
-							<h3 class="font-bold text-xl group-hover:text-primary-500 transition-colors">
-								{post.data.title}
-							</h3>
-							<p class="text-gray-600 dark:text-gray-400">
-								{post.data.description}
-							</p>
-							<div class="flex items-center justify-between">
-								<a href={`/blog/${post.slug}`} class="inline-flex items-center text-primary-500 hover:text-primary-600">
-									Leer más
-									<svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<path d="M5 12h14m-7-7l7 7-7 7"/>
-									</svg>
-								</a>
-								<span class="text-sm text-gray-500 dark:text-gray-400">
-									{post.data.readingTime} min de lectura
-								</span>
-							</div>
-						</div>
-					</div>
-				</article>
-			))}
-		</div>
+      <h1 class="repo-tagline">
+        <span class="tagline-prefix">// </span>
+        Field notes from building reliable backend systems,<br />
+        cloud infrastructure, and the developer tooling that holds it all together.
+      </h1>
 
-		{sortedPosts.length > POSTS_PER_PAGE && (
-			<div class="flex justify-center pt-8">
-				<button
-					id="load-more"
-					class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-full transition-colors duration-300"
-					data-total-posts={sortedPosts.length}
-				>
-					Cargar más artículos
-					<svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-					</svg>
-				</button>
-			</div>
-		)}
-	</div>
+      <div class="repo-actions">
+        <button type="button" class="action-btn">
+          <span class="action-glyph" aria-hidden="true">★</span>
+          <span class="action-key">Star</span>
+          <span class="action-val">{Math.max(visiblePosts.length * 7, 12)}</span>
+        </button>
+        <button type="button" class="action-btn">
+          <span class="action-glyph" aria-hidden="true">⎇</span>
+          <span class="action-key">Watch</span>
+          <span class="action-val">{visiblePosts.length}</span>
+        </button>
+        <a href={`https://github.com/${profile.githubUsername}`} target="_blank" rel="noopener noreferrer" class="action-btn primary">
+          <span class="action-glyph" aria-hidden="true">⤴</span>
+          <span class="action-key">View on GitHub</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- ════════  TOOLBAR  ════════ -->
+    <div class="repo-toolbar" role="toolbar" aria-label="Browse files">
+      <div class="branch-selector">
+        <span class="branch-glyph" aria-hidden="true">⎇</span>
+        <span class="branch-name">main</span>
+        <span class="branch-caret" aria-hidden="true">▾</span>
+      </div>
+
+      <div class="path-breadcrumb">
+        <a href={withBase('blog')} class="bc-seg">{profile.githubUsername}</a>
+        <span class="bc-sep" aria-hidden="true">/</span>
+        <a href={withBase('blog')} class="bc-seg">journal</a>
+        <span class="bc-sep" aria-hidden="true">/</span>
+        <span class="bc-seg active">docs</span>
+      </div>
+
+      <div class="toolbar-spacer"></div>
+
+      <label class="search-box" aria-label="Search files">
+        <span class="search-glyph" aria-hidden="true">⌕</span>
+        <input
+          id="repo-search"
+          type="search"
+          placeholder="search docs..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <span class="search-key" aria-hidden="true">/</span>
+      </label>
+    </div>
+
+    <!-- ════════  FILTER CHIPS  ════════ -->
+    <div class="filters" role="tablist" aria-label="Filter by category">
+      <button class="chip is-active" type="button" data-category="all" role="tab" aria-selected="true">
+        <span class="chip-flag">--all</span>
+        <span class="chip-count">{visiblePosts.length}</span>
+      </button>
+      {categories.map((category) => {
+        const count = visiblePosts.filter((p) => p.data.category === category).length;
+        return (
+          <button class="chip" type="button" data-category={category} role="tab" aria-selected="false">
+            <span class="chip-glyph" aria-hidden="true">#</span>
+            <span class="chip-flag">{category.toLowerCase()}</span>
+            <span class="chip-count">{count}</span>
+          </button>
+        );
+      })}
+    </div>
+
+    {heroPost && (
+      <!-- ════════  README.md (cover story)  ════════ -->
+      <section class="readme" aria-labelledby="readme-title" data-category={heroPost.data.category}>
+        <div class="readme-frame">
+          <!-- File chrome -->
+          <header class="file-chrome">
+            <div class="chrome-left">
+              <span class="md-icon" aria-hidden="true">M↓</span>
+              <span class="file-name">README.md</span>
+              <span class="pinned-badge" title="Pinned post">
+                <span class="pin-glyph" aria-hidden="true">◈</span>
+                pinned
+              </span>
+            </div>
+            <div class="chrome-right">
+              <span class="chrome-action">Raw</span>
+              <span class="chrome-sep" aria-hidden="true">|</span>
+              <span class="chrome-action">Blame</span>
+              <span class="chrome-sep" aria-hidden="true">|</span>
+              <span class="chrome-action">History</span>
+            </div>
+          </header>
+
+          <!-- File stats subbar -->
+          <div class="file-substats" aria-hidden="true">
+            <span class="sub-cell">
+              <span class="sub-key">commit</span>
+              <span class="sub-val mono">{shortSha(heroPost.slug)}</span>
+            </span>
+            <span class="sub-cell">
+              <span class="sub-key">author</span>
+              <span class="sub-val">@{profile.githubUsername}</span>
+            </span>
+            <span class="sub-cell">
+              <span class="sub-key">date</span>
+              <span class="sub-val mono">{isoFormat(heroPost.data.pubDate)}</span>
+            </span>
+            <span class="sub-spacer"></span>
+            <span class="sub-cell">
+              <span class="sub-val mono">{wordsOf(heroPost)} words</span>
+            </span>
+            <span class="sub-cell">
+              <span class="sub-val mono">{heroPost.data.readingTime} min</span>
+            </span>
+          </div>
+
+          <!-- Rendered README (the cover story preview) -->
+          <a class="readme-body" href={withBase(`blog/${heroPost.slug}`)} aria-label={`Open ${heroPost.data.title}`}>
+            <div class="readme-meta">
+              <span class="meta-cat">#{heroPost.data.category.toLowerCase()}</span>
+              {heroPost.data.tags && heroPost.data.tags.slice(0, 3).map((tag: string) => (
+                <span class="meta-tag">#{tag}</span>
+              ))}
+            </div>
+
+            <h2 id="readme-title" class="readme-title">
+              <span class="md-h1-prefix" aria-hidden="true"># </span>
+              {heroPost.data.title}
+              <span class="md-cursor" aria-hidden="true"></span>
+            </h2>
+
+            <p class="readme-dek">
+              <span class="md-quote-prefix" aria-hidden="true">&gt; </span>
+              {heroPost.data.description}
+            </p>
+
+            <div class="readme-divider" aria-hidden="true">
+              <span class="divider-token">---</span>
+            </div>
+
+            <div class="readme-cta">
+              <span class="cta-icon" aria-hidden="true">↪</span>
+              <span class="cta-label">Read the full piece</span>
+              <span class="cta-arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
+        </div>
+      </section>
+    )}
+
+    {restPosts.length > 0 && (
+      <!-- ════════  FILE BROWSER (archive)  ════════ -->
+      <section class="archive" aria-labelledby="archive-title">
+        <header class="archive-head">
+          <h2 id="archive-title" class="archive-title">
+            <span class="ah-glyph" aria-hidden="true">▸</span>
+            <span class="ah-cmd">ls</span>
+            <span class="ah-flag">-la</span>
+            <span class="ah-arg">docs/</span>
+          </h2>
+          <span class="archive-rule" aria-hidden="true"></span>
+          <span class="archive-stats">
+            <span class="ar-cell">{restPosts.length} files</span>
+            <span class="ar-sep" aria-hidden="true">·</span>
+            <span class="ar-cell">{formatBytes(totalBytes)}</span>
+            <span class="ar-sep" aria-hidden="true">·</span>
+            <span class="ar-cell">last commit {lastCommitAgo}</span>
+          </span>
+        </header>
+
+        <!-- Column headings — like a real file browser -->
+        <div class="file-list-head" aria-hidden="true">
+          <span class="col-name">name</span>
+          <span class="col-msg">last commit message</span>
+          <span class="col-size">size</span>
+          <span class="col-date">modified</span>
+        </div>
+
+        <ol class="file-list" id="posts-grid">
+          {initialPage.map((post, idx) => (
+            <li
+              class="file-row"
+              data-category={post.data.category}
+              data-search-blob={`${post.data.title} ${post.data.description} ${post.data.category} ${(post.data.tags ?? []).join(' ')}`.toLowerCase()}
+              style={`--row-delay: ${idx * 38}ms;`}
+            >
+              <a class="file-link" href={withBase(`blog/${post.slug}`)} aria-label={`Open ${post.data.title}`}>
+                <div class="col-name">
+                  <span class="file-icon" aria-hidden="true">M↓</span>
+                  <div class="file-name-block">
+                    <span class="file-fname">{post.slug}.md</span>
+                    <span class="file-title">{post.data.title}</span>
+                  </div>
+                </div>
+                <div class="col-msg">
+                  <span class="commit-sha mono">{shortSha(post.slug)}</span>
+                  <span class="commit-msg">{commitMsg(post)}</span>
+                </div>
+                <div class="col-size mono">{formatBytes(fileBytes(post))}</div>
+                <div class="col-date">
+                  <time datetime={post.data.pubDate.toISOString()} title={formatDate(post.data.pubDate)}>
+                    {formatDistanceToNow(post.data.pubDate, { addSuffix: true })}
+                  </time>
+                </div>
+                <span class="row-arrow" aria-hidden="true">↗</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+
+        <!-- Empty state for filters -->
+        <p class="file-list-empty" id="filter-empty" hidden>
+          <span class="empty-glyph" aria-hidden="true">∅</span>
+          <span class="empty-text">No matches in this directory.</span>
+        </p>
+
+        <!-- ════════  SUBSCRIBE BAR  ════════ -->
+        <aside class="subscribe" aria-labelledby="subscribe-title">
+          <div class="sub-prompt" aria-hidden="true">
+            <span class="prompt-user">stescobedo</span>
+            <span class="prompt-at">@</span>
+            <span class="prompt-host">journal</span>
+            <span class="prompt-colon">:</span>
+            <span class="prompt-path">~/docs</span>
+            <span class="prompt-dollar">$</span>
+            <span class="prompt-cmd">git subscribe --watch releases</span>
+          </div>
+          <div class="sub-body">
+            <h3 id="subscribe-title" class="sub-title">
+              Watch this repo for new entries
+            </h3>
+            <p class="sub-lede">
+              No platforms, no tracking pixels — just an email when a new file lands in <code>docs/</code>.
+            </p>
+            <form class="sub-form" action={`mailto:${profile.email}?subject=Subscribe%20to%20journal`} method="post">
+              <label class="sr-only" for="newsletter-email">Your email</label>
+              <span class="form-arrow" aria-hidden="true">→</span>
+              <input id="newsletter-email" type="email" name="email" placeholder="you@domain.dev" required spellcheck="false" autocomplete="email" />
+              <button type="submit">
+                <span>Subscribe</span>
+                <span class="btn-shortcut" aria-hidden="true">↵</span>
+              </button>
+            </form>
+          </div>
+        </aside>
+
+        {restPosts.length > POSTS_PER_PAGE && (
+          <nav class="pagination" aria-label="Pagination">
+            <button id="load-more" class="load-more" type="button" data-total={restPosts.length} data-page-size={POSTS_PER_PAGE} data-shown={initialPage.length}>
+              <span class="lm-glyph" aria-hidden="true">▾</span>
+              <span class="lm-cmd">git pull</span>
+              <span class="lm-flag">--older</span>
+              <span class="lm-arg">.</span>
+            </button>
+          </nav>
+        )}
+      </section>
+    )}
+
+    {visiblePosts.length === 0 && (
+      <section class="empty">
+        <span class="empty-glyph" aria-hidden="true">∅</span>
+        <p>This directory is empty — check back soon.</p>
+      </section>
+    )}
+
+    <!-- ════════  COLOPHON  ════════ -->
+    <footer class="repo-foot" aria-label="Repository footer">
+      <span class="foot-cell">
+        <span class="foot-key">License</span>
+        <span class="foot-val">MIT</span>
+      </span>
+      <span class="foot-cell">
+        <span class="foot-key">Set in</span>
+        <span class="foot-val">Fraunces × JetBrains Mono</span>
+      </span>
+      <span class="foot-cell">
+        <span class="foot-key">Built with</span>
+        <span class="foot-val">Astro</span>
+      </span>
+      <span class="foot-cell">
+        <span class="foot-key">© {new Date().getFullYear()}</span>
+        <span class="foot-val">@{profile.githubUsername}</span>
+      </span>
+    </footer>
+  </article>
 </Layout>
 
 <script>
-	let currentPage = 1;
-	const POSTS_PER_PAGE = 9;
-	
-	document.getElementById('load-more')?.addEventListener('click', async () => {
-		try {
-			const button = document.getElementById('load-more');
-			const container = document.getElementById('posts-container');
-			const totalPosts = parseInt(button?.getAttribute('data-total-posts') || '0');
-			
-			const start = currentPage * POSTS_PER_PAGE;
-			const end = start + POSTS_PER_PAGE;
-			
-			if (start >= totalPosts) {
-				button?.remove();
-				return;
-			}
-			
-			const response = await fetch(`/api/posts?start=${start}&end=${end}`);
-			if (!response.ok) {
-				throw new Error('Error al cargar más posts');
-			}
-			
-			const data = await response.json();
-			
-			// Agregar nuevos posts al contenedor
-			container?.insertAdjacentHTML('beforeend', data.html);
-			
-			currentPage++;
-			
-			if ((currentPage * POSTS_PER_PAGE) >= totalPosts) {
-				button?.remove();
-			}
-		} catch (error) {
-			console.error('Error:', error);
-		}
-	});
+  const initializeBlog = () => {
+    const grid = document.getElementById('posts-grid');
+    const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.filters .chip'));
+    const search = document.getElementById('repo-search') as HTMLInputElement | null;
+    const empty = document.getElementById('filter-empty');
+    const loadMore = document.getElementById('load-more') as HTMLButtonElement | null;
+    if (!grid || (grid as any).dataset.ready === 'true') return;
+    (grid as any).dataset.ready = 'true';
+
+    let activeCategory = 'all';
+    let activeQuery = '';
+
+    const applyFilters = () => {
+      const rows = Array.from(document.querySelectorAll<HTMLElement>('.file-row'));
+      const readme = document.querySelector<HTMLElement>('.readme');
+      let visibleCount = 0;
+      rows.forEach((row) => {
+        const matchesCategory = activeCategory === 'all' || row.dataset.category === activeCategory;
+        const blob = row.dataset.searchBlob || '';
+        const matchesQuery = activeQuery.length === 0 || blob.includes(activeQuery);
+        const visible = matchesCategory && matchesQuery;
+        row.classList.toggle('is-hidden', !visible);
+        if (visible) visibleCount++;
+      });
+      if (readme) {
+        const heroCat = readme.dataset.category || '';
+        const matchesCategory = activeCategory === 'all' || heroCat === activeCategory;
+        const matchesQuery = activeQuery.length === 0; // README only shows on empty search
+        readme.classList.toggle('is-hidden', !(matchesCategory && matchesQuery));
+      }
+      if (empty) {
+        empty.hidden = visibleCount > 0;
+      }
+    };
+
+    chips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        activeCategory = chip.dataset.category || 'all';
+        chips.forEach((c) => {
+          const sel = c === chip;
+          c.classList.toggle('is-active', sel);
+          c.setAttribute('aria-selected', String(sel));
+        });
+        applyFilters();
+      });
+    });
+
+    if (search) {
+      search.addEventListener('input', () => {
+        activeQuery = search.value.trim().toLowerCase();
+        applyFilters();
+      });
+      // "/" focuses search like GitHub
+      document.addEventListener('keydown', (event) => {
+        const target = event.target as HTMLElement | null;
+        if (event.key === '/' && target && !['INPUT', 'TEXTAREA'].includes(target.tagName)) {
+          event.preventDefault();
+          search.focus();
+        }
+        if (event.key === 'Escape' && document.activeElement === search) {
+          search.blur();
+        }
+      });
+    }
+
+    if (loadMore) {
+      loadMore.addEventListener('click', () => {
+        loadMore.disabled = true;
+        const cmd = loadMore.querySelector('.lm-cmd');
+        if (cmd) cmd.textContent = 'fetching…';
+        loadMore.hidden = true;
+      });
+    }
+  };
+
+  document.addEventListener('astro:page-load', initializeBlog);
+  initializeBlog();
 </script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+
+  :where(.repo) {
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --display: 'Fraunces', Georgia, serif;
+    --emerald-100: rgb(187 247 208);
+    --emerald-300: rgb(167 243 208);
+    --emerald-400: rgb(110 231 183);
+    --emerald-500: rgb(52 211 153);
+    --emerald-600: rgb(16 185 129);
+    --navy-950: rgb(13 22 42);
+    --navy-900: rgb(22 30 52);
+    --navy-800: rgb(28 38 70);
+    --navy-700: rgb(34 46 78);
+    --slate-100: rgb(248 250 252);
+    --slate-300: rgb(203 213 225);
+    --slate-500: rgb(100 116 139);
+    --amber-300: rgb(252 211 77);
+    --rose-300: rgb(252 165 165);
+    --violet-300: rgb(196 181 253);
+    --sky-300: rgb(125 211 252);
+  }
+
+  .repo {
+    position: relative;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 6.5rem 1.5rem 4rem;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(110, 231, 183, 0.05) 1px, transparent 0);
+    background-size: 32px 32px;
+  }
+
+  /* ═══════════════════════  REPOSITORY HEADER  ═══════════════════════ */
+  .repo-header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(187, 247, 208, 0.1);
+  }
+
+  .repo-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 1.25rem;
+    font-family: var(--mono);
+    font-size: 1.15rem;
+  }
+
+  .repo-glyph {
+    color: var(--emerald-400);
+    font-size: 1.1rem;
+  }
+
+  .repo-owner {
+    color: rgba(187, 247, 208, 0.78);
+    text-decoration: none;
+    transition: color 200ms ease;
+  }
+
+  .repo-owner:hover {
+    color: var(--emerald-400);
+  }
+
+  .repo-slash {
+    color: rgba(187, 247, 208, 0.4);
+  }
+
+  .repo-name {
+    color: var(--slate-100);
+    font-weight: 700;
+  }
+
+  .repo-tag {
+    margin-left: 0.45rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid rgba(110, 231, 183, 0.32);
+    border-radius: 999px;
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .repo-tagline {
+    margin: 0 0 1.5rem;
+    color: var(--slate-300);
+    font-family: var(--display);
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+    font-style: italic;
+    font-weight: 350;
+    font-variation-settings: 'opsz' 144;
+    line-height: 1.35;
+    max-width: 56ch;
+    letter-spacing: -0.012em;
+  }
+
+  .tagline-prefix {
+    color: rgba(148, 163, 184, 0.65);
+    font-family: var(--mono);
+    font-size: 0.78em;
+    font-style: normal;
+  }
+
+  .repo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    border-radius: 6px;
+    background: rgba(28, 38, 70, 0.55);
+    color: var(--emerald-100);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 200ms ease, background-color 220ms ease, border-color 220ms ease, transform 180ms ease;
+  }
+
+  .action-btn:hover {
+    color: var(--slate-100);
+    background: rgba(110, 231, 183, 0.06);
+    border-color: rgba(110, 231, 183, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .action-btn.primary {
+    background: linear-gradient(135deg, var(--emerald-400), var(--emerald-500));
+    color: var(--navy-950);
+    border-color: transparent;
+    font-weight: 600;
+  }
+
+  .action-btn.primary:hover {
+    background: linear-gradient(135deg, var(--emerald-300), var(--emerald-400));
+    color: var(--navy-950);
+  }
+
+  .action-glyph { color: var(--emerald-400); font-size: 0.85rem; }
+  .action-btn.primary .action-glyph { color: var(--navy-950); }
+
+  .action-key { letter-spacing: 0.04em; }
+
+  .action-val {
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(110, 231, 183, 0.12);
+    color: var(--emerald-400);
+    font-size: 0.62rem;
+    font-weight: 700;
+  }
+
+  /* ═══════════════════════  TOOLBAR  ═══════════════════════ */
+  .repo-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 0.85rem;
+    margin-bottom: 1.25rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid rgba(187, 247, 208, 0.12);
+    border-radius: 8px;
+    background: rgba(13, 22, 42, 0.55);
+    backdrop-filter: blur(8px);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+  }
+
+  .branch-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.55rem;
+    border: 1px solid rgba(110, 231, 183, 0.28);
+    border-radius: 4px;
+    background: rgba(110, 231, 183, 0.06);
+    color: var(--emerald-300);
+    cursor: default;
+  }
+
+  .branch-glyph { color: var(--emerald-400); }
+  .branch-name { font-weight: 600; }
+  .branch-caret { color: rgba(110, 231, 183, 0.55); font-size: 0.7rem; }
+
+  .path-breadcrumb {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    color: rgba(187, 247, 208, 0.6);
+  }
+
+  .bc-seg {
+    color: rgba(187, 247, 208, 0.6);
+    text-decoration: none;
+    transition: color 180ms ease;
+  }
+
+  .bc-seg:hover { color: var(--emerald-400); }
+
+  .bc-seg.active {
+    color: var(--slate-100);
+    font-weight: 600;
+  }
+
+  .bc-sep { color: rgba(187, 247, 208, 0.3); }
+
+  .toolbar-spacer { flex: 1; }
+
+  .search-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    border-radius: 6px;
+    background: rgba(22, 30, 52, 0.7);
+    transition: border-color 220ms ease, background-color 220ms ease;
+    min-width: 240px;
+  }
+
+  .search-box:focus-within {
+    border-color: var(--emerald-400);
+    background: rgba(34, 46, 78, 0.7);
+  }
+
+  .search-glyph {
+    color: rgba(110, 231, 183, 0.6);
+  }
+
+  .search-box input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: var(--slate-100);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    outline: none;
+  }
+
+  .search-box input::placeholder {
+    color: rgba(148, 163, 184, 0.55);
+  }
+
+  .search-key {
+    padding: 0.05rem 0.4rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    border-radius: 3px;
+    color: rgba(187, 247, 208, 0.55);
+    font-size: 0.62rem;
+  }
+
+  /* ═══════════════════════  FILTER CHIPS  ═══════════════════════ */
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    border-radius: 999px;
+    background: rgba(28, 38, 70, 0.55);
+    color: rgba(187, 247, 208, 0.75);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    cursor: pointer;
+    transition: color 200ms ease, background-color 220ms ease, border-color 220ms ease, transform 180ms ease;
+  }
+
+  .chip:hover {
+    color: var(--emerald-100);
+    border-color: rgba(110, 231, 183, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .chip.is-active {
+    color: var(--navy-950);
+    background: linear-gradient(135deg, var(--emerald-400), var(--emerald-500));
+    border-color: transparent;
+    box-shadow: 0 6px 18px rgba(52, 211, 153, 0.32);
+  }
+
+  .chip-glyph { color: rgba(110, 231, 183, 0.65); font-weight: 700; }
+  .chip.is-active .chip-glyph { color: var(--navy-950); }
+
+  .chip-flag { letter-spacing: 0.02em; }
+
+  .chip-count {
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(110, 231, 183, 0.12);
+    color: var(--emerald-400);
+    font-size: 0.62rem;
+    font-weight: 700;
+  }
+
+  .chip.is-active .chip-count {
+    background: rgba(13, 22, 42, 0.25);
+    color: var(--navy-950);
+  }
+
+  /* ═══════════════════════  README (cover story)  ═══════════════════════ */
+  .readme {
+    margin-bottom: 3rem;
+    transition: opacity 200ms ease;
+  }
+
+  .readme.is-hidden { display: none; }
+
+  .readme-frame {
+    border: 1px solid rgba(187, 247, 208, 0.16);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(34, 46, 78, 0.7), rgba(22, 30, 52, 0.55));
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+
+  /* file chrome */
+  .file-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.65rem 0.95rem;
+    background: rgba(13, 22, 42, 0.6);
+    border-bottom: 1px solid rgba(110, 231, 183, 0.1);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+  }
+
+  .chrome-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .md-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, var(--sky-300), var(--emerald-400));
+    color: var(--navy-950);
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+  }
+
+  .file-name {
+    color: var(--slate-100);
+    font-weight: 600;
+  }
+
+  .pinned-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(252, 211, 77, 0.12);
+    border: 1px solid rgba(252, 211, 77, 0.4);
+    color: var(--amber-300);
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .pin-glyph { font-size: 0.7rem; }
+
+  .chrome-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(187, 247, 208, 0.55);
+  }
+
+  .chrome-action {
+    cursor: default;
+    transition: color 200ms ease;
+  }
+
+  .chrome-sep { color: rgba(187, 247, 208, 0.2); }
+
+  /* substats */
+  .file-substats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 1rem;
+    padding: 0.55rem 0.95rem;
+    background: rgba(22, 30, 52, 0.55);
+    border-bottom: 1px dashed rgba(110, 231, 183, 0.12);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--slate-300);
+  }
+
+  .sub-cell {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.32rem;
+  }
+
+  .sub-key {
+    color: rgba(110, 231, 183, 0.55);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 0.6rem;
+  }
+
+  .sub-val { color: var(--slate-100); }
+  .sub-val.mono { color: var(--amber-300); }
+
+  .sub-spacer { flex: 1; }
+
+  /* readme body */
+  .readme-body {
+    display: block;
+    padding: 1.6rem clamp(1.1rem, 3vw, 2.5rem) 1.85rem;
+    color: inherit;
+    text-decoration: none;
+    transition: background-color 320ms ease;
+  }
+
+  .readme-body:hover {
+    background: rgba(110, 231, 183, 0.03);
+  }
+
+  .readme-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .meta-cat,
+  .meta-tag {
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+  }
+
+  .meta-cat {
+    background: rgba(110, 231, 183, 0.12);
+    border: 1px solid rgba(110, 231, 183, 0.32);
+    color: var(--emerald-400);
+    font-weight: 600;
+  }
+
+  .meta-tag {
+    background: rgba(28, 38, 70, 0.55);
+    border: 1px solid rgba(187, 247, 208, 0.14);
+    color: rgba(187, 247, 208, 0.7);
+  }
+
+  .readme-title {
+    margin: 0 0 1rem;
+    color: var(--slate-100);
+    font-family: var(--display);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144, 'WONK' 1;
+    letter-spacing: -0.025em;
+    line-height: 1.08;
+  }
+
+  .md-h1-prefix {
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    font-size: 0.5em;
+    font-weight: 700;
+    letter-spacing: 0;
+    vertical-align: 0.45em;
+    margin-right: 0.2em;
+  }
+
+  .md-cursor {
+    display: inline-block;
+    width: 0.4em;
+    height: 0.85em;
+    margin-left: 0.15em;
+    background: var(--emerald-400);
+    vertical-align: -0.1em;
+    animation: blink 1.05s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+
+  .readme-dek {
+    margin: 0;
+    color: var(--slate-300);
+    font-family: var(--display);
+    font-size: clamp(1.05rem, 1.5vw, 1.25rem);
+    font-style: italic;
+    font-weight: 350;
+    line-height: 1.55;
+    max-width: 60ch;
+  }
+
+  .md-quote-prefix {
+    color: rgba(110, 231, 183, 0.65);
+    font-family: var(--mono);
+    font-size: 0.85em;
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  .readme-divider {
+    margin: 1.4rem 0 1rem;
+    color: rgba(187, 247, 208, 0.35);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.4em;
+  }
+
+  .divider-token { user-select: none; }
+
+  .readme-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    background: rgba(110, 231, 183, 0.08);
+    border: 1px solid rgba(110, 231, 183, 0.32);
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: background-color 220ms ease, transform 220ms ease, gap 240ms ease;
+  }
+
+  .readme-body:hover .readme-cta {
+    background: linear-gradient(135deg, var(--emerald-400), var(--emerald-500));
+    color: var(--navy-950);
+    gap: 0.85rem;
+  }
+
+  .cta-icon { font-size: 0.85rem; }
+  .cta-arrow { transition: transform 220ms ease; }
+  .readme-body:hover .cta-arrow { transform: translateX(3px); }
+
+  /* ═══════════════════════  ARCHIVE / FILE BROWSER  ═══════════════════════ */
+  .archive {
+    margin-bottom: 4rem;
+  }
+
+  .archive-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .archive-title {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin: 0;
+    color: var(--slate-100);
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .ah-glyph { color: var(--emerald-400); font-size: 0.85rem; }
+  .ah-cmd { color: var(--violet-300); }
+  .ah-flag { color: var(--amber-300); }
+  .ah-arg { color: var(--emerald-300); }
+
+  .archive-rule {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(187, 247, 208, 0.18), transparent);
+    min-width: 1rem;
+  }
+
+  .archive-stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: rgba(187, 247, 208, 0.55);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+
+  .ar-cell { color: rgba(187, 247, 208, 0.7); }
+  .ar-sep { color: rgba(187, 247, 208, 0.25); }
+
+  /* file list head */
+  .file-list-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 2fr) minmax(80px, 0.4fr) minmax(120px, 0.6fr);
+    gap: 1rem;
+    padding: 0.55rem 1rem;
+    border: 1px solid rgba(187, 247, 208, 0.1);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    background: rgba(13, 22, 42, 0.6);
+    color: rgba(110, 231, 183, 0.55);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* file rows */
+  .file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgba(187, 247, 208, 0.1);
+    border-radius: 0 0 8px 8px;
+    background: rgba(22, 30, 52, 0.4);
+    overflow: hidden;
+  }
+
+  .file-row {
+    border-bottom: 1px solid rgba(187, 247, 208, 0.06);
+    opacity: 0;
+    transform: translateY(8px);
+    animation: row-rise 480ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation-delay: var(--row-delay);
+    transition: background-color 220ms ease, opacity 200ms ease;
+  }
+
+  @keyframes row-rise {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .file-row:last-child { border-bottom: 0; }
+
+  .file-row.is-hidden { display: none; }
+
+  .file-row:hover { background: rgba(110, 231, 183, 0.04); }
+
+  .file-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 2fr) minmax(80px, 0.4fr) minmax(120px, 0.6fr);
+    gap: 1rem;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    color: inherit;
+    text-decoration: none;
+    position: relative;
+    transition: padding 220ms ease;
+  }
+
+  .file-row:hover .file-link {
+    padding-left: 1.25rem;
+  }
+
+  .col-name {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+  }
+
+  .file-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    background: rgba(125, 211, 252, 0.16);
+    border: 1px solid rgba(125, 211, 252, 0.32);
+    color: var(--sky-300);
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    flex-shrink: 0;
+  }
+
+  .file-name-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  .file-fname {
+    color: rgba(110, 231, 183, 0.7);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-row:hover .file-fname { color: var(--emerald-400); }
+
+  .file-title {
+    color: var(--slate-100);
+    font-family: var(--display);
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.25;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .col-msg {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    min-width: 0;
+    color: rgba(187, 247, 208, 0.7);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    line-height: 1.45;
+  }
+
+  .commit-sha {
+    color: var(--amber-300);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+
+  .commit-msg {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .col-size {
+    color: rgba(187, 247, 208, 0.5);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+
+  .col-date {
+    color: rgba(187, 247, 208, 0.55);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+  }
+
+  .col-date time {
+    color: inherit;
+  }
+
+  .row-arrow {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translate(8px, -50%);
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 220ms ease, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .file-row:hover .row-arrow {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+
+  /* file list empty */
+  .file-list-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin: 1.5rem 0 0;
+    padding: 2rem;
+    border: 1px dashed rgba(187, 247, 208, 0.18);
+    border-radius: 8px;
+    color: rgba(187, 247, 208, 0.55);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+  }
+
+  .empty-glyph { color: var(--rose-300); font-size: 1rem; }
+
+  /* ═══════════════════════  SUBSCRIBE BAR  ═══════════════════════ */
+  .subscribe {
+    margin: 3rem 0 2rem;
+    border: 1px solid rgba(110, 231, 183, 0.18);
+    border-radius: 10px;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(110, 231, 183, 0.12), transparent 55%),
+      linear-gradient(180deg, rgba(34, 46, 78, 0.7), rgba(22, 30, 52, 0.55));
+    overflow: hidden;
+  }
+
+  .sub-prompt {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.32rem;
+    padding: 0.6rem 1rem;
+    background: rgba(13, 22, 42, 0.7);
+    border-bottom: 1px solid rgba(110, 231, 183, 0.08);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+
+  .prompt-user { color: var(--emerald-400); font-weight: 700; }
+  .prompt-at { color: rgba(187, 247, 208, 0.5); }
+  .prompt-host { color: var(--sky-300); font-weight: 700; }
+  .prompt-colon { color: rgba(187, 247, 208, 0.5); }
+  .prompt-path { color: var(--amber-300); }
+  .prompt-dollar { color: var(--emerald-400); margin-right: 0.3rem; }
+  .prompt-cmd { color: var(--slate-100); }
+
+  .sub-body {
+    padding: 1.4rem clamp(1rem, 2.5vw, 1.85rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: center;
+  }
+
+  .sub-title {
+    margin: 0 0 0.5rem;
+    color: var(--slate-100);
+    font-family: var(--display);
+    font-size: clamp(1.25rem, 2vw, 1.65rem);
+    font-style: italic;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: -0.012em;
+    line-height: 1.2;
+  }
+
+  .sub-lede {
+    margin: 0;
+    color: var(--slate-300);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.55;
+  }
+
+  .sub-lede code {
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+    background: rgba(110, 231, 183, 0.1);
+    color: var(--emerald-300);
+  }
+
+  .sub-form {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.45rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    border-radius: 6px;
+    background: rgba(13, 22, 42, 0.65);
+  }
+
+  .form-arrow {
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    margin-left: 0.45rem;
+  }
+
+  .sub-form input {
+    border: 0;
+    background: transparent;
+    color: var(--slate-100);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    padding: 0.5rem 0.25rem;
+    outline: none;
+  }
+
+  .sub-form input::placeholder {
+    color: rgba(148, 163, 184, 0.5);
+  }
+
+  .sub-form button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.95rem;
+    border: 0;
+    border-radius: 4px;
+    background: linear-gradient(135deg, var(--emerald-400), var(--emerald-500));
+    color: var(--navy-950);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    transition: transform 200ms ease, box-shadow 220ms ease;
+  }
+
+  .sub-form button:hover,
+  .sub-form button:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(52, 211, 153, 0.45);
+    outline: none;
+  }
+
+  .btn-shortcut {
+    padding: 0.05rem 0.35rem;
+    border: 1px solid rgba(13, 22, 42, 0.32);
+    border-radius: 3px;
+    background: rgba(13, 22, 42, 0.18);
+    font-size: 0.62rem;
+    font-weight: 800;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ═══════════════════════  PAGINATION  ═══════════════════════ */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.5rem;
+  }
+
+  .load-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 1.4rem;
+    border: 1px solid rgba(110, 231, 183, 0.32);
+    border-radius: 999px;
+    background: rgba(28, 38, 70, 0.55);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    transition: color 200ms ease, background-color 220ms ease, transform 200ms ease;
+  }
+
+  .lm-glyph { color: var(--emerald-400); }
+  .lm-cmd { color: var(--violet-300); }
+  .lm-flag { color: var(--amber-300); }
+  .lm-arg { color: var(--emerald-300); }
+
+  .load-more:hover,
+  .load-more:focus-visible {
+    background: rgba(110, 231, 183, 0.06);
+    border-color: var(--emerald-400);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .load-more[disabled] {
+    opacity: 0.5;
+    cursor: wait;
+  }
+
+  /* ═══════════════════════  EMPTY  ═══════════════════════ */
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 4rem 0;
+    color: rgba(187, 247, 208, 0.55);
+    font-family: var(--mono);
+    font-size: 0.88rem;
+  }
+
+  .empty .empty-glyph {
+    font-size: 2.5rem;
+    color: rgba(252, 165, 165, 0.65);
+  }
+
+  /* ═══════════════════════  COLOPHON  ═══════════════════════ */
+  .repo-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem 1.6rem;
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(187, 247, 208, 0.1);
+    color: var(--slate-500);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+
+  .foot-cell {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+
+  .foot-key {
+    color: rgba(110, 231, 183, 0.55);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-size: 0.6rem;
+  }
+
+  .foot-val { color: rgba(187, 247, 208, 0.65); }
+
+  /* ═══════════════════════  LIGHT MODE  ═══════════════════════ */
+  :global(html:not(.dark)) .repo {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.05) 1px, transparent 0);
+  }
+
+  :global(html:not(.dark)) .repo-name,
+  :global(html:not(.dark)) .file-title,
+  :global(html:not(.dark)) .readme-title,
+  :global(html:not(.dark)) .file-name,
+  :global(html:not(.dark)) .archive-title,
+  :global(html:not(.dark)) .sub-title,
+  :global(html:not(.dark)) .repo-tagline {
+    color: rgb(15 23 42);
+  }
+
+  :global(html:not(.dark)) .readme-frame,
+  :global(html:not(.dark)) .file-list,
+  :global(html:not(.dark)) .file-list-head,
+  :global(html:not(.dark)) .repo-toolbar,
+  :global(html:not(.dark)) .subscribe {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+  }
+
+  :global(html:not(.dark)) .file-row { border-bottom-color: rgb(241 245 249); }
+  :global(html:not(.dark)) .file-row:hover { background: rgb(248 250 252); }
+  :global(html:not(.dark)) .file-chrome,
+  :global(html:not(.dark)) .file-substats,
+  :global(html:not(.dark)) .sub-prompt { background: rgb(248 250 252); }
+
+  :global(html:not(.dark)) .file-list-head { background: rgb(248 250 252); }
+  :global(html:not(.dark)) .repo-tagline { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .commit-msg,
+  :global(html:not(.dark)) .col-msg,
+  :global(html:not(.dark)) .readme-dek,
+  :global(html:not(.dark)) .sub-lede {
+    color: rgb(51 65 85);
+  }
+
+  :global(html:not(.dark)) .commit-sha { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .file-fname { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .ms-key,
+  :global(html:not(.dark)) .ah-cmd { color: rgb(124 58 237); }
+
+  :global(html:not(.dark)) .branch-selector {
+    background: rgb(236 253 245);
+    border-color: rgb(167 243 208);
+    color: rgb(15 118 110);
+  }
+
+  :global(html:not(.dark)) .action-btn { background: rgb(255 255 255); border-color: rgb(226 232 240); color: rgb(51 65 85); }
+
+  /* ═══════════════════════  RESPONSIVE  ═══════════════════════ */
+  @media (max-width: 900px) {
+    .sub-body {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .repo {
+      padding: 5.5rem 1rem 3rem;
+    }
+
+    .file-list-head {
+      display: none;
+    }
+
+    .file-link {
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
+      padding: 1rem;
+    }
+
+    .col-msg {
+      padding-left: 2rem;
+    }
+
+    .col-size,
+    .col-date {
+      padding-left: 2rem;
+      font-size: 0.66rem;
+    }
+
+    .row-arrow { display: none; }
+
+    .repo-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .toolbar-spacer { display: none; }
+
+    .search-box { min-width: 0; }
+
+    .sub-form {
+      grid-template-columns: 1fr;
+    }
+
+    .sub-form input { padding: 0.7rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .file-row,
+    .md-cursor {
+      animation: none;
+    }
+    .file-row { opacity: 1; transform: none; }
+  }
+</style>

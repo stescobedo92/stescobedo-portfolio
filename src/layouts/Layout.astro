@@ -3,12 +3,18 @@ import '@fontsource/poppins/400.css';
 import '@fontsource/poppins/600.css';
 import '@fontsource/poppins/700.css';
 import ThemeToggle from '../components/ThemeToggle.astro';
+import BackToTop from '../components/portfolio/BackToTop.astro';
+import Icon from '../components/portfolio/Icon.astro';
+import SideRails from '../components/portfolio/SideRails.astro';
 
 interface Props {
 	title: string;
 }
 
 const { title } = Astro.props;
+const rawBase = import.meta.env.BASE_URL || '/';
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
 ---
 
 <!doctype html>
@@ -17,7 +23,7 @@ const { title } = Astro.props;
 		<meta charset="UTF-8" />
 		<meta name="description" content="Blog personal" />
 		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/ste-avatar.svg" />
+		<link rel="icon" type="image/svg+xml" href={withBase('ste-avatar.svg')} />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 		<script is:inline>
@@ -28,31 +34,566 @@ const { title } = Astro.props;
 			}
 		</script>
 	</head>
-	<body class="bg-white dark:bg-dark-900 text-dark-900 dark:text-dark-50 transition-colors duration-300">
-		<div class="min-h-screen flex flex-col">
-			<header class="border-b border-gray-200 dark:border-dark-700 fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/80 dark:bg-dark-900/80">
-				<nav class="max-w-5xl mx-auto px-4 py-4">
-					<div class="flex justify-between items-center">
-						<a href="/" class="text-xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
-							stescobedo
-						</a>
-						<div class="flex items-center space-x-6">
-							<a href="/blog" class="hover:text-primary-500 transition-colors">Blog</a>
-							<a href="/about" class="hover:text-primary-500 transition-colors">About me</a>
-							<ThemeToggle />
-						</div>
-					</div>
-				</nav>
-			</header>
-			<main class="flex-grow max-w-5xl mx-auto px-4 py-12 w-full mt-16">
-				<slot />
-			</main>
-			<footer class="border-t border-gray-200 dark:border-dark-700 mt-auto">
-				<div class="max-w-5xl mx-auto px-4 py-6 text-center text-gray-600 dark:text-gray-400">
-					© {new Date().getFullYear()} stescobedo. Made with 
-					<span class="text-red-500">❤️</span> using Astro.
+	<body>
+		<a class="skip-link" href="#main-content">Skip to main content</a>
+		<header id="site-header">
+			<nav aria-label="Main navigation">
+				<a href={withBase('')} class="brand">
+					<span class="brand-mark" aria-hidden="true">
+						<span class="brand-glyph">S</span>
+						<span class="brand-dot" aria-hidden="true"></span>
+					</span>
+					<span class="brand-text">
+						<span class="brand-name">stescobedo</span>
+						<span class="brand-meta">Engineering · Journal</span>
+					</span>
+				</a>
+
+				<div class="desktop-nav" id="desktop-nav">
+					<span class="nav-pill" aria-hidden="true"></span>
+					<a class="nav-link" href={`${withBase('')}#about`} data-section="about"><span class="num">01</span><span>About</span></a>
+					<a class="nav-link" href={`${withBase('')}#experience`} data-section="experience"><span class="num">02</span><span>Experience</span></a>
+					<a class="nav-link" href={`${withBase('')}#projects`} data-section="projects"><span class="num">03</span><span>Work</span></a>
+					<a class="nav-link" href={`${withBase('')}#contact`} data-section="contact"><span class="num">04</span><span>Contact</span></a>
+					<a class="nav-link" href={withBase('blog')} data-section="blog"><span class="num">05</span><span>Blog</span></a>
 				</div>
-			</footer>
-		</div>
+
+				<div class="nav-aside">
+					<ThemeToggle />
+				</div>
+
+				<button id="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+					<Icon name="menu" class="menu-icon h-5 w-5" />
+					<Icon name="x" class="close-icon h-5 w-5" />
+				</button>
+			</nav>
+
+			<div id="mobile-menu" hidden>
+				<a class="m-link" href={`${withBase('')}#about`}><span class="num">01</span>About</a>
+				<a class="m-link" href={`${withBase('')}#experience`}><span class="num">02</span>Experience</a>
+				<a class="m-link" href={`${withBase('')}#projects`}><span class="num">03</span>Work</a>
+				<a class="m-link" href={`${withBase('')}#contact`}><span class="num">04</span>Contact</a>
+				<a class="m-link" href={withBase('blog')}><span class="num">05</span>Blog</a>
+				<div class="m-aside">
+					<ThemeToggle />
+				</div>
+			</div>
+		</header>
+		<SideRails />
+		<main id="main-content">
+			<slot />
+		</main>
+		<footer>
+			<p>© {new Date().getFullYear()} stescobedo. Built with Astro.</p>
+		</footer>
+		<BackToTop />
+		<script is:inline>
+			(() => {
+				const initializeShell = () => {
+					const header = document.getElementById('site-header');
+					const button = document.getElementById('mobile-menu-button');
+					const menu = document.getElementById('mobile-menu');
+					let lastY = window.scrollY;
+					let ticking = false;
+
+					const updateHeader = () => {
+						if (!header) return;
+						const currentY = window.scrollY;
+						header.classList.toggle('scrolled', currentY > 40);
+						header.classList.toggle('hidden-header', currentY > lastY && currentY > 120);
+						lastY = Math.max(currentY, 0);
+						ticking = false;
+					};
+
+					window.addEventListener('scroll', () => {
+						if (!ticking) {
+							window.requestAnimationFrame(updateHeader);
+							ticking = true;
+						}
+					}, { passive: true });
+
+					button?.addEventListener('click', () => {
+						if (!menu) return;
+						const isOpen = button.getAttribute('aria-expanded') === 'true';
+						button.setAttribute('aria-expanded', String(!isOpen));
+						menu.hidden = isOpen;
+					});
+
+					menu?.querySelectorAll('a').forEach((link) => {
+						link.addEventListener('click', () => {
+							if (!button || !menu) return;
+							button.setAttribute('aria-expanded', 'false');
+							menu.hidden = true;
+						});
+					});
+
+					// Sliding pill indicator + scroll-spy
+					const desktopNav = document.getElementById('desktop-nav');
+					if (desktopNav) {
+						const pill = desktopNav.querySelector('.nav-pill');
+						const links = Array.from(desktopNav.querySelectorAll('.nav-link'));
+						const movePill = (target) => {
+							if (!pill || !target) return;
+							const navRect = desktopNav.getBoundingClientRect();
+							const linkRect = target.getBoundingClientRect();
+							pill.style.width = linkRect.width + 'px';
+							pill.style.transform = 'translateX(' + (linkRect.left - navRect.left - 6.4) + 'px)';
+						};
+						const setActive = (link) => {
+							links.forEach((l) => l.classList.toggle('is-active', l === link));
+							if (link) {
+								desktopNav.classList.add('has-active');
+								movePill(link);
+							}
+						};
+						links.forEach((link) => {
+							link.addEventListener('mouseenter', () => movePill(link));
+							link.addEventListener('focus', () => movePill(link));
+						});
+						desktopNav.addEventListener('mouseleave', () => {
+							const active = desktopNav.querySelector('.nav-link.is-active');
+							if (active) movePill(active);
+							else if (pill) pill.style.opacity = '0';
+						});
+
+						// Scroll-spy: detect which section is in view
+						const sectionIds = ['about', 'experience', 'projects', 'contact'];
+						const sections = sectionIds
+							.map((id) => document.getElementById(id))
+							.filter((el) => el !== null);
+						const linkBySection = new Map();
+						links.forEach((l) => {
+							const s = l.getAttribute('data-section');
+							if (s) linkBySection.set(s, l);
+						});
+						const isOnBlog = window.location.pathname.includes('/blog');
+						if (isOnBlog) {
+							setActive(linkBySection.get('blog') || null);
+						} else if (sections.length > 0 && 'IntersectionObserver' in window) {
+							const observer = new IntersectionObserver((entries) => {
+								const visible = entries
+									.filter((e) => e.isIntersecting)
+									.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+								if (visible) {
+									const link = linkBySection.get(visible.target.id);
+									if (link) setActive(link);
+								}
+							}, { rootMargin: '-40% 0px -55% 0px', threshold: [0, 0.25, 0.5, 0.75] });
+							sections.forEach((s) => s && observer.observe(s));
+						}
+					}
+
+					updateHeader();
+				};
+
+				document.addEventListener('astro:page-load', initializeShell);
+				initializeShell();
+			})();
+		</script>
 	</body>
 </html>
+
+<style is:global>
+	:root {
+		color-scheme: light dark;
+		scroll-behavior: smooth;
+	}
+
+	html {
+		background: rgb(255 255 255);
+		color: rgb(22 30 52);
+		font-family: Poppins, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		letter-spacing: 0;
+		counter-reset: section;
+	}
+
+	html.dark {
+		background: rgb(22 30 52);
+		color: rgb(248 250 252);
+	}
+
+	body {
+		min-height: 100vh;
+		margin: 0;
+		background:
+			radial-gradient(circle at top right, rgba(52, 211, 153, 0.12), transparent 34rem),
+			rgb(255 255 255);
+		color: inherit;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	html.dark body {
+		background:
+			radial-gradient(circle at top right, rgba(52, 211, 153, 0.12), transparent 34rem),
+			rgb(22 30 52);
+	}
+
+	* {
+		box-sizing: border-box;
+	}
+
+	a {
+		color: inherit;
+	}
+
+	.skip-link {
+		position: fixed;
+		left: 1rem;
+		top: 1rem;
+		z-index: 100;
+		transform: translateY(-150%);
+		border-radius: 4px;
+		background: rgb(52 211 153);
+		padding: 0.65rem 0.9rem;
+		color: white;
+		text-decoration: none;
+		transition: transform 160ms ease;
+	}
+
+	.skip-link:focus {
+		transform: translateY(0);
+	}
+
+	#site-header {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 50;
+		width: 100%;
+		transform: translateY(0);
+		border-bottom: 1px solid transparent;
+		transition: transform 260ms ease, background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+	}
+
+	#site-header.scrolled {
+		border-color: rgba(203, 213, 225, 0.18);
+		background: rgba(255, 255, 255, 0.86);
+		backdrop-filter: blur(18px);
+		box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+	}
+
+	html.dark #site-header.scrolled {
+		border-color: rgba(51, 65, 85, 0.65);
+		background: rgba(22, 30, 52, 0.86);
+		box-shadow: 0 12px 32px rgba(4, 12, 32, 0.25);
+	}
+
+	#site-header.hidden-header {
+		transform: translateY(-100%);
+	}
+
+	nav {
+		display: flex;
+		max-width: 1180px;
+		height: 5rem;
+		align-items: center;
+		justify-content: space-between;
+		margin: 0 auto;
+		padding: 0 1.5rem;
+	}
+
+	/* BRAND with monogram + meta line */
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.75rem;
+		text-decoration: none;
+	}
+
+	.brand-mark {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 38px;
+		height: 38px;
+		border-radius: 10px;
+		background:
+			conic-gradient(from 220deg at 50% 50%, rgb(110 231 183), rgb(52 211 153), rgb(16 185 129), rgb(110 231 183));
+		color: rgb(22 30 52);
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: 1.15rem;
+		font-style: italic;
+		font-weight: 700;
+		font-variation-settings: 'opsz' 144, 'WONK' 1;
+		line-height: 1;
+		box-shadow: 0 8px 24px rgba(52, 211, 153, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+		transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 280ms ease;
+	}
+
+	.brand:hover .brand-mark,
+	.brand:focus-visible .brand-mark {
+		transform: rotate(-6deg) scale(1.05);
+		box-shadow: 0 14px 36px rgba(52, 211, 153, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+	}
+
+	.brand-glyph {
+		position: relative;
+		z-index: 2;
+	}
+
+	.brand-dot {
+		position: absolute;
+		bottom: 7px;
+		right: 7px;
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: rgb(22 30 52);
+		opacity: 0.85;
+	}
+
+	.brand-text {
+		display: flex;
+		flex-direction: column;
+		line-height: 1;
+	}
+
+	.brand-name {
+		color: rgb(248 250 252);
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: 1.05rem;
+		font-weight: 500;
+		font-variation-settings: 'opsz' 144;
+		letter-spacing: -0.01em;
+		transition: color 200ms ease;
+	}
+
+	html:not(.dark) .brand-name {
+		color: rgb(22 30 52);
+	}
+
+	.brand-meta {
+		margin-top: 2px;
+		color: rgb(110 231 183);
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		font-size: 0.62rem;
+		font-weight: 500;
+		letter-spacing: 0.22em;
+		text-transform: uppercase;
+		opacity: 0.85;
+	}
+
+	/* DESKTOP NAV with sliding pill indicator */
+	.desktop-nav {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.15rem;
+		padding: 0.4rem;
+		border: 1px solid rgba(187, 247, 208, 0.18);
+		border-radius: 999px;
+		background: rgba(22, 30, 52, 0.4);
+		backdrop-filter: blur(12px);
+	}
+
+	html:not(.dark) .desktop-nav {
+		background: rgba(255, 255, 255, 0.6);
+		border-color: rgba(15, 23, 42, 0.08);
+	}
+
+	.nav-pill {
+		position: absolute;
+		top: 0.4rem;
+		bottom: 0.4rem;
+		left: 0.4rem;
+		width: 0;
+		border-radius: 999px;
+		background: linear-gradient(135deg, rgba(110, 231, 183, 0.18), rgba(52, 211, 153, 0.08));
+		border: 1px solid rgba(110, 231, 183, 0.4);
+		opacity: 0;
+		transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), width 320ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 220ms ease;
+		pointer-events: none;
+		z-index: 0;
+	}
+
+	.desktop-nav:hover .nav-pill,
+	.desktop-nav.has-active .nav-pill {
+		opacity: 1;
+	}
+
+	.nav-link {
+		position: relative;
+		z-index: 1;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.45rem 0.95rem;
+		border-radius: 999px;
+		color: rgb(187 247 208);
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: 0.92rem;
+		font-weight: 500;
+		font-variation-settings: 'opsz' 144;
+		letter-spacing: -0.005em;
+		text-decoration: none;
+		transition: color 200ms ease;
+	}
+
+	html:not(.dark) .nav-link {
+		color: rgb(51 65 85);
+	}
+
+	.nav-link .num {
+		color: rgba(110, 231, 183, 0.6);
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		font-size: 0.7rem;
+		letter-spacing: 0.1em;
+	}
+
+	.nav-link:hover,
+	.nav-link:focus-visible,
+	.nav-link.is-active {
+		color: rgb(248 250 252);
+		outline: none;
+	}
+
+	html:not(.dark) .nav-link:hover,
+	html:not(.dark) .nav-link:focus-visible,
+	html:not(.dark) .nav-link.is-active {
+		color: rgb(22 30 52);
+	}
+
+	.nav-link:hover .num,
+	.nav-link.is-active .num {
+		color: rgb(110 231 183);
+	}
+
+	/* THEME TOGGLE container */
+	.nav-aside {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	/* MOBILE MENU BUTTON */
+	#mobile-menu-button {
+		display: none;
+		width: 2.6rem;
+		height: 2.6rem;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid rgba(110, 231, 183, 0.5);
+		border-radius: 10px;
+		background: rgba(22, 30, 52, 0.4);
+		backdrop-filter: blur(12px);
+		color: rgb(110 231 183);
+		cursor: pointer;
+		transition: background-color 180ms ease, border-color 180ms ease;
+	}
+
+	#mobile-menu-button:hover {
+		background: rgba(110, 231, 183, 0.12);
+	}
+
+	#mobile-menu-button .close-icon {
+		display: none;
+	}
+
+	#mobile-menu-button[aria-expanded='true'] .menu-icon {
+		display: none;
+	}
+
+	#mobile-menu-button[aria-expanded='true'] .close-icon {
+		display: block;
+	}
+
+	/* MOBILE MENU */
+	#mobile-menu {
+		position: fixed;
+		top: 5rem;
+		right: 1rem;
+		left: 1rem;
+		display: grid;
+		max-width: 24rem;
+		margin-left: auto;
+		gap: 0.15rem;
+		border: 1px solid rgba(187, 247, 208, 0.2);
+		border-radius: 14px;
+		background: rgba(22, 30, 52, 0.92);
+		backdrop-filter: blur(18px);
+		padding: 0.85rem;
+		color: rgb(248 250 252);
+		box-shadow: 0 24px 70px rgba(4, 12, 32, 0.5);
+	}
+
+	#mobile-menu[hidden] {
+		display: none;
+	}
+
+	.m-link {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.7rem;
+		padding: 0.85rem 1rem;
+		border-radius: 10px;
+		color: rgb(187 247 208);
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: 1.05rem;
+		font-weight: 500;
+		font-variation-settings: 'opsz' 144;
+		text-decoration: none;
+		transition: background-color 200ms ease, color 200ms ease;
+	}
+
+	.m-link:hover,
+	.m-link:focus-visible {
+		background: rgba(110, 231, 183, 0.1);
+		color: rgb(248 250 252);
+		outline: none;
+	}
+
+	.m-link .num {
+		color: rgba(110, 231, 183, 0.65);
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		font-size: 0.72rem;
+		letter-spacing: 0.12em;
+	}
+
+	.m-aside {
+		margin-top: 0.5rem;
+		padding-top: 0.85rem;
+		border-top: 1px solid rgba(187, 247, 208, 0.15);
+		padding-left: 1rem;
+	}
+
+	main {
+		width: 100%;
+		padding: 0 clamp(1.25rem, 5vw, 4rem);
+	}
+
+	footer {
+		border-top: 1px solid rgb(226 232 240);
+		padding: 2rem 1rem;
+		color: rgb(71 85 105);
+		text-align: center;
+	}
+
+	html.dark footer {
+		border-color: rgb(48 62 98);
+		color: rgb(148 163 184);
+	}
+
+	@media (max-width: 820px) {
+		.desktop-nav {
+			display: none;
+		}
+
+		#mobile-menu-button {
+			display: inline-flex;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:root {
+			scroll-behavior: auto;
+		}
+
+		* {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+		}
+	}
+</style>

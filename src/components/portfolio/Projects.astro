@@ -1,0 +1,1828 @@
+---
+import Section from './Section.astro';
+import Icon from './Icon.astro';
+import { projects, profile } from '../../data/portfolio';
+
+const rawBase = import.meta.env.BASE_URL || '/';
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
+
+const featured = projects.filter((project) => project.featured);
+const otherProjects = projects.filter((project) => !project.featured);
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const padN = (n: number, w: number) => String(n).padStart(w, ' ');
+
+// ─────────────────────────  LANGUAGE METADATA  ─────────────────────────
+type LangKey = 'rust' | 'cpp' | 'go' | 'csharp' | 'typescript' | 'python' | 'generic';
+
+type LangMeta = {
+  key: LangKey;
+  label: string;
+  ext: string;
+  glyph: string;          // emoji-ish file icon
+  hue: string;            // accent color (CSS)
+  hueSoft: string;        // tinted background
+  comment: string;        // // or # etc.
+  docComment: string;     // /// or //! or # etc.
+};
+
+const LANGS: Record<LangKey, LangMeta> = {
+  rust:       { key: 'rust',       label: 'Rust',       ext: 'rs',   glyph: '◆', hue: '247 154 65',   hueSoft: '247 154 65',   comment: '//', docComment: '//!' },
+  cpp:        { key: 'cpp',        label: 'C++',        ext: 'cpp',  glyph: '▣', hue: '116 199 236',  hueSoft: '116 199 236',  comment: '//', docComment: '///' },
+  go:         { key: 'go',         label: 'Go',         ext: 'go',   glyph: '◎', hue: '125 211 252',  hueSoft: '125 211 252',  comment: '//', docComment: '//' },
+  csharp:     { key: 'csharp',     label: 'C#',         ext: 'cs',   glyph: '◈', hue: '167 139 250',  hueSoft: '167 139 250',  comment: '//', docComment: '///' },
+  typescript: { key: 'typescript', label: 'TypeScript', ext: 'ts',   glyph: '◇', hue: '96 165 250',   hueSoft: '96 165 250',   comment: '//', docComment: '/**' },
+  python:     { key: 'python',     label: 'Python',     ext: 'py',   glyph: '○', hue: '252 211 77',   hueSoft: '252 211 77',   comment: '#',  docComment: '"""' },
+  generic:    { key: 'generic',    label: 'Code',       ext: 'src',  glyph: '◌', hue: '110 231 183',  hueSoft: '110 231 183',  comment: '//', docComment: '//' },
+};
+
+const detectLang = (tech: string[]): LangMeta => {
+  const norm = tech.map((t) => t.toLowerCase());
+  if (norm.some((t) => t === 'rust')) return LANGS.rust;
+  if (norm.some((t) => t === 'c++' || t === 'cpp')) return LANGS.cpp;
+  if (norm.some((t) => t === 'go' || t === 'golang')) return LANGS.go;
+  if (norm.some((t) => t === '.net' || t.includes('c#'))) return LANGS.csharp;
+  if (norm.some((t) => t === 'typescript' || t === 'ts')) return LANGS.typescript;
+  if (norm.some((t) => t === 'python')) return LANGS.python;
+  return LANGS.generic;
+};
+
+// File icon path-style slug for the breadcrumb: dotnet-version-manager → dotnet_version_manager
+const fileSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+
+// Deterministic mock metrics derived from the project name so they stay stable across builds
+const hashSeed = (s: string) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+};
+
+const mockMetrics = (project: { name: string; active?: boolean }) => {
+  const seed = hashSeed(project.name);
+  const stars = (seed % 90) + 12;          // 12 - 101
+  const lines = ((seed >>> 8) % 4500) + 320; // 320 - 4819
+  const commits = ((seed >>> 16) % 240) + 22; // 22 - 261
+  return { stars, lines, commits };
+};
+
+const mockVersion = (project: { name: string }) => {
+  const seed = hashSeed(project.name);
+  const major = (seed >>> 24) % 3;          // 0 - 2
+  const minor = (seed >>> 12) & 0x0f;       // 0 - 15
+  const patch = seed & 0x1f;                // 0 - 31
+  return `${major}.${minor}.${patch}`;
+};
+
+// Build a "code preview" as an array of lines, each being an array of tokens.
+type Token = { t: 'kw' | 'ty' | 'str' | 'cmt' | 'fn' | 'attr' | 'punct' | 'ident' | 'num' | 'space' | 'hash'; v: string };
+type Line = Token[];
+
+const renderRust = (project: typeof projects[number]): Line[] => {
+  const slug = fileSlug(project.name);
+  const struct = project.name.split(/[\s\-_]+/).map((w) => w[0]?.toUpperCase() + w.slice(1).toLowerCase()).join('');
+  const isActive = project.active === true;
+  const lines: Line[] = [];
+
+  lines.push([{ t: 'cmt', v: `//! ${project.name}` }]);
+  lines.push([{ t: 'cmt', v: `//! ${'='.repeat(Math.min(project.name.length + 4, 48))}` }]);
+  lines.push([{ t: 'cmt', v: '//!' }]);
+  lines.push([{ t: 'cmt', v: `//! ${project.description}` }]);
+  lines.push([]);
+  lines.push([{ t: 'kw', v: 'use' }, { t: 'space', v: ' ' }, { t: 'ident', v: 'std' }, { t: 'punct', v: '::' }, { t: 'ident', v: 'process' }, { t: 'punct', v: '::Command' }, { t: 'punct', v: ';' }]);
+  lines.push([{ t: 'kw', v: 'use' }, { t: 'space', v: ' ' }, { t: 'ident', v: 'clap' }, { t: 'punct', v: '::' }, { t: 'ident', v: 'Parser' }, { t: 'punct', v: ';' }]);
+  lines.push([]);
+  lines.push([{ t: 'attr', v: '#[derive(Debug, Project)]' }]);
+  lines.push([{ t: 'kw', v: 'pub struct' }, { t: 'space', v: ' ' }, { t: 'ty', v: struct }, { t: 'space', v: ' ' }, { t: 'punct', v: '{' }]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'cmt', v: `/// status: ${isActive ? 'active' : 'shipped'}` }]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'kw', v: 'pub status' }, { t: 'punct', v: ':' }, { t: 'space', v: ' ' }, { t: 'ty', v: 'Status' }, { t: 'punct', v: ',' }]);
+  lines.push([]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'cmt', v: '/// distinguishing capabilities' }]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'kw', v: 'pub highlights' }, { t: 'punct', v: ':' }, { t: 'space', v: ' ' }, { t: 'ty', v: `[&'static str; ${project.highlights.length}]` }, { t: 'punct', v: ',' }]);
+  lines.push([{ t: 'punct', v: '}' }]);
+  lines.push([]);
+  lines.push([{ t: 'kw', v: 'impl' }, { t: 'space', v: ' ' }, { t: 'ty', v: struct }, { t: 'space', v: ' ' }, { t: 'punct', v: '{' }]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'kw', v: 'pub fn' }, { t: 'space', v: ' ' }, { t: 'fn', v: 'launch' }, { t: 'punct', v: '() -> ' }, { t: 'ty', v: '!' }, { t: 'space', v: ' ' }, { t: 'punct', v: '{' }]);
+  lines.push([{ t: 'space', v: '        ' }, { t: 'cmt', v: `// → github.com/${(project.githubRepo ?? slug).replace(/^.*?\//, 'stescobedo92/')}` }]);
+  lines.push([{ t: 'space', v: '        ' }, { t: 'ident', v: 'cli' }, { t: 'punct', v: '::' }, { t: 'fn', v: 'run' }, { t: 'punct', v: '(' }, { t: 'str', v: `"${project.tech.join(' + ')}"` }, { t: 'punct', v: ');' }]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'punct', v: '}' }]);
+  lines.push([{ t: 'punct', v: '}' }]);
+  return lines;
+};
+
+const renderCpp = (project: typeof projects[number]): Line[] => {
+  const struct = project.name.split(/[\s\-_]+/).map((w) => w[0]?.toUpperCase() + w.slice(1).toLowerCase()).join('');
+  const lines: Line[] = [];
+  lines.push([{ t: 'cmt', v: `// ${project.name} — ${project.tech.join(' / ')}` }]);
+  lines.push([{ t: 'cmt', v: '//' }]);
+  lines.push([{ t: 'cmt', v: `// ${project.description}` }]);
+  lines.push([]);
+  lines.push([{ t: 'attr', v: '#include' }, { t: 'space', v: ' ' }, { t: 'str', v: '<iostream>' }]);
+  lines.push([{ t: 'attr', v: '#include' }, { t: 'space', v: ' ' }, { t: 'str', v: '"platform/desktop.hpp"' }]);
+  lines.push([]);
+  lines.push([{ t: 'kw', v: 'namespace' }, { t: 'space', v: ' ' }, { t: 'ident', v: 'stescobedo' }, { t: 'space', v: ' ' }, { t: 'punct', v: '{' }]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'kw', v: 'class' }, { t: 'space', v: ' ' }, { t: 'ty', v: struct }, { t: 'space', v: ' ' }, { t: 'punct', v: '{' }]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'kw', v: 'public:' }]);
+  lines.push([{ t: 'space', v: '        ' }, { t: 'kw', v: 'static void' }, { t: 'space', v: ' ' }, { t: 'fn', v: 'apply' }, { t: 'punct', v: '();' }]);
+  project.highlights.forEach((h) => {
+    lines.push([{ t: 'space', v: '        ' }, { t: 'cmt', v: `// + ${h}` }]);
+  });
+  lines.push([{ t: 'space', v: '    ' }, { t: 'punct', v: '};' }]);
+  lines.push([{ t: 'punct', v: '}' }]);
+  return lines;
+};
+
+const renderGo = (project: typeof projects[number]): Line[] => {
+  const lines: Line[] = [];
+  const pkg = fileSlug(project.name);
+  lines.push([{ t: 'cmt', v: `// Package ${pkg}` }]);
+  lines.push([{ t: 'cmt', v: `// ${project.description}` }]);
+  lines.push([]);
+  lines.push([{ t: 'kw', v: 'package' }, { t: 'space', v: ' ' }, { t: 'ident', v: pkg }]);
+  lines.push([]);
+  lines.push([{ t: 'kw', v: 'import' }, { t: 'space', v: ' ' }, { t: 'punct', v: '(' }]);
+  project.tech.forEach((t) => {
+    lines.push([{ t: 'space', v: '    ' }, { t: 'str', v: `"${t.toLowerCase()}.io/${pkg}"` }]);
+  });
+  lines.push([{ t: 'punct', v: ')' }]);
+  lines.push([]);
+  lines.push([{ t: 'kw', v: 'type' }, { t: 'space', v: ' ' }, { t: 'ty', v: 'Project' }, { t: 'space', v: ' ' }, { t: 'kw', v: 'struct' }, { t: 'space', v: ' ' }, { t: 'punct', v: '{' }]);
+  project.highlights.forEach((h, i) => {
+    const fld = h.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() + w.slice(1).toLowerCase()).join('');
+    lines.push([{ t: 'space', v: '    ' }, { t: 'ident', v: fld || `Field${i}` }, { t: 'space', v: ' ' }, { t: 'ty', v: 'string' }, { t: 'space', v: '   ' }, { t: 'cmt', v: `// ${h}` }]);
+  });
+  lines.push([{ t: 'punct', v: '}' }]);
+  return lines;
+};
+
+const renderForLang = (project: typeof projects[number], lang: LangMeta): Line[] => {
+  if (lang.key === 'rust') return renderRust(project);
+  if (lang.key === 'cpp') return renderCpp(project);
+  if (lang.key === 'go') return renderGo(project);
+  return renderRust(project); // sensible default
+};
+
+// Pre-compute previews for all featured projects so we can render them once
+const featuredViews = featured.map((project, index) => {
+  const lang = detectLang(project.tech);
+  const lines = renderForLang(project, lang);
+  const metrics = mockMetrics(project);
+  const version = mockVersion(project);
+  return {
+    project,
+    lang,
+    lines,
+    metrics,
+    version,
+    tabId: `tab-${index}`,
+    panelId: `panel-${index}`,
+    isActive: index === 0,
+    fileName: `${fileSlug(project.name)}.${lang.ext}`,
+  };
+});
+
+// For other projects, mock metrics + cargo-style sections
+const otherViews = otherProjects.map((project, index) => {
+  const lang = detectLang(project.tech);
+  const metrics = mockMetrics(project);
+  const version = mockVersion(project);
+  return { project, lang, metrics, version, num: index + 1 };
+});
+---
+
+<Section title="Selected Work" id="projects">
+  <!-- ────────  IDE WORKSPACE (featured)  ──────── -->
+  <div class="ide" role="region" aria-label="Featured projects, displayed as an IDE workspace">
+    <!-- Window chrome -->
+    <div class="ide-chrome" aria-hidden="true">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="chrome-title">workspace · selected-work</span>
+      <span class="chrome-spacer"></span>
+      <span class="chrome-meta">{featured.length} files open</span>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="ide-tabs" role="tablist" aria-label="Project files">
+      {featuredViews.map((view, index) => (
+        <input
+          type="radio"
+          name="ide-tab"
+          id={view.tabId}
+          class="tab-radio"
+          checked={view.isActive}
+          aria-controls={view.panelId}
+        />
+      ))}
+      <div class="tab-strip">
+        {featuredViews.map((view, index) => (
+          <label
+            for={view.tabId}
+            class="tab"
+            data-tab-index={index}
+            role="tab"
+            tabindex="0"
+            style={`--lang-hue: rgb(${view.lang.hue});`}
+          >
+            <span class="tab-glyph" aria-hidden="true">{view.lang.glyph}</span>
+            <span class="tab-name">{view.fileName}</span>
+            <span class="tab-dot" aria-hidden="true"></span>
+            <span class="tab-close" aria-hidden="true">×</span>
+          </label>
+        ))}
+        <span class="tab-fade-right" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <!-- Editor body — only the active panel is shown via :checked -->
+    <div class="ide-body">
+      {featuredViews.map((view, index) => (
+        <section
+          id={view.panelId}
+          class="panel"
+          role="tabpanel"
+          aria-labelledby={view.tabId}
+          data-panel-index={index}
+          style={`--lang-hue: rgb(${view.lang.hue}); --lang-hue-soft: rgba(${view.lang.hueSoft} / 0.12);`}
+        >
+          <!-- Breadcrumb -->
+          <nav class="breadcrumb" aria-label="File path">
+            <span class="bc-glyph" aria-hidden="true">⌘</span>
+            <span class="bc-seg">~</span>
+            <span class="bc-sep" aria-hidden="true">›</span>
+            <span class="bc-seg">workspace</span>
+            <span class="bc-sep" aria-hidden="true">›</span>
+            <span class="bc-seg">selected-work</span>
+            <span class="bc-sep" aria-hidden="true">›</span>
+            <span class="bc-seg active"><span class="bc-icon">{view.lang.glyph}</span> {view.fileName}</span>
+            <span class="bc-spacer"></span>
+            <span class="bc-action" aria-hidden="true">⌃ ⌘ → next</span>
+          </nav>
+
+          <!-- Editor split: code | sidebar -->
+          <div class="editor-split">
+            <!-- Code preview -->
+            <div class="code-pane">
+              <pre class="code-block" aria-label={`${view.project.name} source preview`}>
+                {view.lines.map((tokens, lineIdx) => (
+                  <div class="code-line">
+                    <span class="ln" aria-hidden="true">{padN(lineIdx + 1, 2)}</span>
+                    <span class="lc">
+                      {tokens.map((token) => (
+                        <span class={`tk tk-${token.t}`}>{token.v}</span>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+                <div class="code-line code-line-cursor">
+                  <span class="ln" aria-hidden="true">{padN(view.lines.length + 1, 2)}</span>
+                  <span class="lc"><span class="caret" aria-hidden="true"></span></span>
+                </div>
+              </pre>
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="meta-pane" aria-label={`${view.project.name} metadata`}>
+              <div class="meta-section">
+                <h3 class="meta-title">
+                  <a href={view.project.github} target="_blank" rel="noopener noreferrer">{view.project.name}</a>
+                </h3>
+                <p class="meta-lede">{view.project.description}</p>
+              </div>
+
+              <div class="meta-section">
+                <span class="meta-eyebrow">stats</span>
+                <div class="meta-stats">
+                  <div class="stat-cell">
+                    <span class="stat-num">{view.metrics.stars}</span>
+                    <span class="stat-key">stars</span>
+                  </div>
+                  <div class="stat-cell">
+                    <span class="stat-num">{view.metrics.commits}</span>
+                    <span class="stat-key">commits</span>
+                  </div>
+                  <div class="stat-cell">
+                    <span class="stat-num">{view.metrics.lines.toLocaleString()}</span>
+                    <span class="stat-key">loc</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="meta-section">
+                <span class="meta-eyebrow">stack</span>
+                <ul class="meta-tech">
+                  {view.project.tech.map((tech) => (
+                    <li class="tech-pill">{tech}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div class="meta-section">
+                <span class="meta-eyebrow">highlights</span>
+                <ul class="meta-highlights">
+                  {view.project.highlights.map((h, i) => (
+                    <li>
+                      <span class="hl-num">{pad2(i + 1)}</span>
+                      <span class="hl-text">{h}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div class="meta-actions">
+                <a class="action primary" href={view.project.github} target="_blank" rel="noopener noreferrer">
+                  <Icon name="github" class="h-4 w-4" />
+                  <span>Source</span>
+                  <span class="action-shortcut" aria-hidden="true">↗</span>
+                </a>
+                {view.project.demo && (
+                  <a class="action ghost" href={view.project.demo} target="_blank" rel="noopener noreferrer">
+                    <Icon name="external" class="h-4 w-4" />
+                    <span>Live</span>
+                  </a>
+                )}
+              </div>
+            </aside>
+          </div>
+
+          <!-- Status bar -->
+          <div class="statusbar" aria-hidden="true">
+            <span class="sb-cell sb-branch">
+              <span class="sb-glyph">⎇</span>
+              <span>main</span>
+            </span>
+            <span class="sb-cell">{view.lang.label}</span>
+            <span class="sb-cell">UTF-8</span>
+            <span class="sb-cell">LF</span>
+            <span class="sb-cell">spaces: 4</span>
+            <span class="sb-spacer"></span>
+            <span class="sb-cell">v{view.version}</span>
+            <span class={`sb-cell sb-status ${view.project.active ? 'is-active' : ''}`}>
+              <span class="sb-dot"></span>
+              <span>{view.project.active ? 'active' : 'shipped'}</span>
+            </span>
+            <span class="sb-cell sb-link">Ln {view.lines.length}, Col 1</span>
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
+
+  <!-- ────────  WORKSPACE (other projects as Cargo manifests)  ──────── -->
+  <div class="workspace" data-github-user={profile.githubUsername}>
+    <header class="workspace-head">
+      <span class="ws-glyph" aria-hidden="true">⌗</span>
+      <div class="ws-title">
+        <h3>workspace.toml</h3>
+        <p>more crates from the same author</p>
+      </div>
+      <span class="ws-rule" aria-hidden="true"></span>
+      <a class="ws-link" href={withBase('blog')}>view archive →</a>
+    </header>
+
+    <ul class="manifest-grid" id="project-grid">
+      {otherViews.map((view) => (
+        <li
+          class="manifest"
+          data-github-repo={view.project.githubRepo}
+          data-repo-name={view.project.githubRepo?.split('/')[1] ?? view.project.name}
+          style={`--lang-hue: rgb(${view.lang.hue}); --lang-hue-soft: rgba(${view.lang.hueSoft} / 0.18);`}
+        >
+          <article class="manifest-card">
+            <span class="manifest-rail" aria-hidden="true"></span>
+
+            <header class="manifest-head">
+              <span class="manifest-num">{pad2(view.num)}</span>
+              <span class="manifest-glyph" aria-hidden="true">{view.lang.glyph}</span>
+              <span class="manifest-lang">{view.lang.label}</span>
+              <span class="manifest-spacer"></span>
+              <span class="manifest-version">v{view.version}</span>
+            </header>
+
+            <div class="manifest-section">
+              <span class="ms-key">[package]</span>
+              <ul class="ms-rows">
+                <li>
+                  <span class="ms-prop">name</span>
+                  <span class="ms-eq">=</span>
+                  <a class="ms-val ms-link" href={view.project.github} target="_blank" rel="noopener noreferrer">
+                    "{view.project.name}"
+                  </a>
+                </li>
+                <li>
+                  <span class="ms-prop">authors</span>
+                  <span class="ms-eq">=</span>
+                  <span class="ms-val ms-arr">["stescobedo92"]</span>
+                </li>
+                <li>
+                  <span class="ms-prop">license</span>
+                  <span class="ms-eq">=</span>
+                  <span class="ms-val">"MIT"</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="manifest-section manifest-desc">
+              <span class="ms-key">[description]</span>
+              <p class="repo-description">{view.project.description}</p>
+            </div>
+
+            <div class="manifest-section">
+              <span class="ms-key">[dependencies]</span>
+              <ul class="repo-languages" aria-label={`${view.project.name} technologies`}>
+                {view.project.tech.slice(0, 6).map((tech) => (
+                  <li><span class="dep-plus" aria-hidden="true">+</span> {tech}</li>
+                ))}
+              </ul>
+            </div>
+
+            <footer class="manifest-foot">
+              <span class="foot-stats">
+                <span class="foot-stat">★ {view.metrics.stars}</span>
+                <span class="foot-stat">⎇ {view.metrics.commits}</span>
+              </span>
+              <span class="foot-spacer"></span>
+              <div class="foot-links card-links">
+                <a class="repo-title" href={view.project.github} target="_blank" rel="noopener noreferrer" aria-label={`${view.project.name} on GitHub`}>
+                  <Icon name="github" class="h-4 w-4" />
+                  <span class="foot-label">source</span>
+                </a>
+                {view.project.demo && (
+                  <a href={view.project.demo} target="_blank" rel="noopener noreferrer" aria-label={`${view.project.name} demo`}>
+                    <Icon name="external" class="h-4 w-4" />
+                    <span class="foot-label">live</span>
+                  </a>
+                )}
+                {view.project.active && <span class="active-dot">● active</span>}
+              </div>
+            </footer>
+
+            <span class="card-num" hidden></span>
+          </article>
+        </li>
+      ))}
+    </ul>
+
+    <div class="workspace-footer">
+      <button id="toggle-projects" class="show-more" type="button" aria-expanded="false">
+        <span class="dash" aria-hidden="true"></span>
+        <span>cargo search --remote</span>
+        <span class="dash" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</Section>
+
+<script>
+  type GitHubRepo = {
+    name: string;
+    full_name: string;
+    description: string | null;
+    html_url: string;
+    homepage: string | null;
+    fork: boolean;
+    archived: boolean;
+    private: boolean;
+    languages_url: string;
+    pushed_at: string;
+    owner: { login: string };
+  };
+
+  const PAGE_SIZE = 3;
+  const repoCache = new Map<string, GitHubRepo[]>();
+
+  const fetchOwnedRepos = async (user: string): Promise<GitHubRepo[]> => {
+    const cached = repoCache.get(user);
+    if (cached) return cached;
+    try {
+      const response = await fetch(
+        `https://api.github.com/users/${encodeURIComponent(user)}/repos?per_page=100&sort=pushed&type=owner`,
+        { headers: { Accept: 'application/vnd.github+json' } },
+      );
+      if (!response.ok) return [];
+      const data = (await response.json()) as GitHubRepo[];
+      const owned = data.filter(
+        (repo) =>
+          !repo.fork &&
+          !repo.private &&
+          repo.owner?.login?.toLowerCase() === user.toLowerCase(),
+      );
+      repoCache.set(user, owned);
+      return owned;
+    } catch {
+      return [];
+    }
+  };
+
+  const fetchLanguages = async (url: string): Promise<string[]> => {
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: 'application/vnd.github+json' },
+      });
+      if (!response.ok) return [];
+      const data = (await response.json()) as Record<string, number>;
+      return Object.entries(data)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 6)
+        .map(([language]) => language);
+    } catch {
+      return [];
+    }
+  };
+
+  const safeUrl = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    return /^https?:\/\//i.test(value) ? value : null;
+  };
+
+  const findScopeAttribute = (element: Element): string | null => {
+    for (const attr of Array.from(element.attributes)) {
+      if (attr.name.startsWith('data-astro-cid')) return attr.name;
+    }
+    return null;
+  };
+
+  const buildManifestCard = (
+    template: HTMLLIElement,
+    repo: GitHubRepo,
+    index: number,
+  ): HTMLLIElement => {
+    const li = template.cloneNode(true) as HTMLLIElement;
+    li.className = 'manifest revealed';
+    li.dataset.githubRepo = repo.full_name;
+    li.dataset.repoName = repo.name;
+
+    const repoUrl = safeUrl(repo.html_url) ?? `https://github.com/${repo.full_name}`;
+
+    const numEl = li.querySelector('.manifest-num');
+    if (numEl) numEl.textContent = String(index + 1).padStart(2, '0');
+
+    const versionEl = li.querySelector('.manifest-version');
+    if (versionEl) versionEl.textContent = 'v0.1.0';
+
+    const nameLink = li.querySelector<HTMLAnchorElement>('.ms-link');
+    if (nameLink) {
+      nameLink.href = repoUrl;
+      nameLink.textContent = `"${repo.name}"`;
+    }
+
+    const description = li.querySelector<HTMLElement>('.repo-description');
+    if (description) {
+      description.textContent = repo.description ?? 'A repository on GitHub.';
+    }
+
+    const deps = li.querySelector<HTMLElement>('.repo-languages');
+    if (deps) {
+      deps.replaceChildren();
+      deps.setAttribute('aria-label', `${repo.name} technologies`);
+    }
+
+    const sourceLink = li.querySelector<HTMLAnchorElement>('.foot-links .repo-title');
+    if (sourceLink) sourceLink.href = repoUrl;
+
+    const demoLink = li.querySelectorAll<HTMLAnchorElement>('.foot-links a')[1];
+    if (demoLink) demoLink.remove();
+
+    li.querySelector('.active-dot')?.remove();
+
+    return li;
+  };
+
+  const populateLanguages = async (card: HTMLElement, repo: GitHubRepo) => {
+    const target = card.querySelector<HTMLElement>('.repo-languages');
+    if (!target) return;
+    const languages = await fetchLanguages(repo.languages_url);
+    if (languages.length === 0) return;
+    const scope = findScopeAttribute(target);
+    target.replaceChildren(
+      ...languages.map((language) => {
+        const li = document.createElement('li');
+        if (scope) li.setAttribute(scope, '');
+        const plus = document.createElement('span');
+        plus.className = 'dep-plus';
+        plus.setAttribute('aria-hidden', 'true');
+        plus.textContent = '+';
+        if (scope) plus.setAttribute(scope, '');
+        li.append(plus, ' ', language);
+        return li;
+      }),
+    );
+  };
+
+  const initializeProjects = () => {
+    // ── Tab keyboard nav ──
+    const tabs = Array.from(document.querySelectorAll<HTMLLabelElement>('.ide-tabs .tab'));
+    tabs.forEach((tab) => {
+      if ((tab as any).dataset.bound === 'true') return;
+      (tab as any).dataset.bound = 'true';
+      tab.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+        event.preventDefault();
+        const idx = tabs.indexOf(tab);
+        const next = (idx + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        const radio = document.getElementById(tabs[next].getAttribute('for') ?? '') as HTMLInputElement | null;
+        if (radio) {
+          radio.checked = true;
+          tabs[next].focus();
+        }
+      });
+    });
+
+    // Global keyboard shortcut: ⌘/Ctrl + → / ←
+    if (!(document as any).__projectsTabHotkeysBound) {
+      (document as any).__projectsTabHotkeysBound = true;
+      document.addEventListener('keydown', (event) => {
+        if (!event.metaKey && !event.ctrlKey) return;
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+        const radios = Array.from(document.querySelectorAll<HTMLInputElement>('.ide-tabs .tab-radio'));
+        if (radios.length === 0) return;
+        const activeIdx = radios.findIndex((r) => r.checked);
+        if (activeIdx === -1) return;
+        const target = (event.target as HTMLElement | null);
+        if (target && target.closest('.ide')) {
+          event.preventDefault();
+          const next = (activeIdx + (event.key === 'ArrowRight' ? 1 : -1) + radios.length) % radios.length;
+          radios[next].checked = true;
+        }
+      });
+    }
+
+    // ── Show more (cargo search --remote) ──
+    const section = document.querySelector<HTMLElement>('.workspace');
+    const button = document.getElementById('toggle-projects') as HTMLButtonElement | null;
+    const grid = document.getElementById('project-grid');
+    if (!section || !button || !grid || button.dataset.ready === 'true') return;
+    button.dataset.ready = 'true';
+
+    const user = section.dataset.githubUser;
+    const template = grid.querySelector<HTMLLIElement>('.manifest');
+    if (!user || !template) {
+      button.hidden = true;
+      return;
+    }
+
+    const collectShownNames = () => {
+      const names = new Set<string>();
+      grid.querySelectorAll<HTMLElement>('.manifest').forEach((card) => {
+        const explicit = card.dataset.repoName?.trim().toLowerCase();
+        if (explicit) names.add(explicit);
+      });
+      return names;
+    };
+
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const label = button.querySelector('span:not(.dash)');
+      const previousLabel = label?.textContent ?? 'cargo search --remote';
+      if (label) label.textContent = 'fetching…';
+
+      const repos = await fetchOwnedRepos(user);
+      const shown = collectShownNames();
+      const remaining = repos.filter((repo) => !shown.has(repo.name.toLowerCase()));
+      const next = remaining.slice(0, PAGE_SIZE);
+      const baseIndex = grid.querySelectorAll('.manifest').length;
+
+      next.forEach((repo, index) => {
+        const card = buildManifestCard(template, repo, baseIndex + index);
+        grid.appendChild(card);
+        window.setTimeout(() => {
+          void populateLanguages(card, repo);
+        }, index * 60);
+      });
+
+      button.setAttribute('aria-expanded', 'true');
+      if (label) label.textContent = previousLabel;
+      button.disabled = false;
+
+      if (remaining.length <= PAGE_SIZE || next.length === 0) {
+        button.hidden = true;
+      }
+    });
+  };
+
+  document.addEventListener('astro:page-load', initializeProjects);
+  initializeProjects();
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+
+  :where(.ide, .workspace) {
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --display: 'Fraunces', Georgia, serif;
+    --emerald-100: rgb(187 247 208);
+    --emerald-300: rgb(167 243 208);
+    --emerald-400: rgb(110 231 183);
+    --emerald-500: rgb(52 211 153);
+    --emerald-600: rgb(16 185 129);
+    --navy-950: rgb(13 22 42);
+    --navy-900: rgb(22 30 52);
+    --navy-800: rgb(28 38 70);
+    --navy-700: rgb(34 46 78);
+    --slate-100: rgb(248 250 252);
+    --slate-300: rgb(203 213 225);
+    --slate-500: rgb(100 116 139);
+    --amber-300: rgb(252 211 77);
+    --rose-300: rgb(252 165 165);
+    --violet-300: rgb(196 181 253);
+    --sky-300: rgb(125 211 252);
+  }
+
+  /* ═══════════════════════  IDE WINDOW  ═══════════════════════ */
+  .ide {
+    position: relative;
+    margin: -1rem 0 4rem;
+    border: 1px solid rgba(187, 247, 208, 0.16);
+    border-radius: 14px;
+    background:
+      linear-gradient(180deg, rgba(34, 46, 78, 0.6), rgba(22, 30, 52, 0.78));
+    backdrop-filter: blur(14px);
+    box-shadow: 0 30px 80px rgba(4, 12, 32, 0.5);
+    overflow: hidden;
+  }
+
+  /* glow accent that picks up active tab's language hue */
+  .ide::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--emerald-400),
+      transparent
+    );
+    opacity: 0.6;
+  }
+
+  /* ─── window chrome ─── */
+  .ide-chrome {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 0.95rem;
+    background: rgba(13, 22, 42, 0.7);
+    border-bottom: 1px solid rgba(187, 247, 208, 0.08);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+
+  .ide-chrome .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .ide-chrome .dot-r { background: rgb(255 95 86); }
+  .ide-chrome .dot-y { background: rgb(254 188 46); }
+  .ide-chrome .dot-g { background: rgb(40 200 64); }
+
+  .chrome-title {
+    margin-left: 0.6rem;
+    color: rgba(187, 247, 208, 0.7);
+    letter-spacing: 0.02em;
+  }
+
+  .chrome-spacer {
+    flex: 1;
+  }
+
+  .chrome-meta {
+    color: rgba(110, 231, 183, 0.55);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-size: 0.6rem;
+  }
+
+  /* ─── tab bar (CSS-only via radio inputs) ─── */
+  .ide-tabs {
+    position: relative;
+    background: rgba(22, 30, 52, 0.95);
+    border-bottom: 1px solid rgba(110, 231, 183, 0.12);
+  }
+
+  .tab-radio {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .tab-strip {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(110, 231, 183, 0.2) transparent;
+  }
+
+  .tab-strip::-webkit-scrollbar { height: 4px; }
+  .tab-strip::-webkit-scrollbar-thumb { background: rgba(110, 231, 183, 0.2); border-radius: 999px; }
+
+  .tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1rem 0.65rem 0.85rem;
+    border-right: 1px solid rgba(187, 247, 208, 0.06);
+    background: transparent;
+    color: rgba(187, 247, 208, 0.55);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color 220ms ease, background-color 220ms ease;
+  }
+
+  .tab:hover {
+    color: var(--emerald-100);
+    background: rgba(110, 231, 183, 0.04);
+  }
+
+  .tab:focus-visible {
+    outline: 1px solid var(--emerald-400);
+    outline-offset: -2px;
+  }
+
+  .tab-glyph {
+    color: var(--lang-hue);
+    font-size: 0.85rem;
+  }
+
+  .tab-name {
+    font-weight: 500;
+  }
+
+  .tab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(187, 247, 208, 0.35);
+    margin-left: 0.25rem;
+    transition: background 220ms ease;
+  }
+
+  .tab-close {
+    margin-left: 0.15rem;
+    color: rgba(187, 247, 208, 0.4);
+    font-size: 1rem;
+    line-height: 1;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  .tab:hover .tab-close {
+    background: rgba(187, 247, 208, 0.08);
+    color: var(--emerald-100);
+  }
+
+  .tab-fade-right {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 30px;
+    background: linear-gradient(90deg, transparent, rgba(22, 30, 52, 0.95));
+    pointer-events: none;
+  }
+
+  /* Active tab styling — driven by :checked sibling */
+  .tab-radio:nth-of-type(1):checked ~ .tab-strip > .tab[data-tab-index="0"],
+  .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"],
+  .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"],
+  .tab-radio:nth-of-type(4):checked ~ .tab-strip > .tab[data-tab-index="3"],
+  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"] {
+    color: var(--slate-100);
+    background: rgba(34, 46, 78, 0.65);
+  }
+
+  .tab-radio:nth-of-type(1):checked ~ .tab-strip > .tab[data-tab-index="0"]::before,
+  .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"]::before,
+  .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"]::before,
+  .tab-radio:nth-of-type(4):checked ~ .tab-strip > .tab[data-tab-index="3"]::before,
+  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"]::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--lang-hue);
+    box-shadow: 0 0 12px var(--lang-hue);
+  }
+
+  .tab-radio:nth-of-type(1):checked ~ .tab-strip > .tab[data-tab-index="0"] .tab-dot,
+  .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"] .tab-dot,
+  .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"] .tab-dot {
+    background: var(--lang-hue);
+    box-shadow: 0 0 6px var(--lang-hue);
+  }
+
+  /* ─── editor body ─── */
+  .ide-body {
+    position: relative;
+    background: rgba(13, 22, 42, 0.55);
+  }
+
+  .panel {
+    display: none;
+    animation: panel-fade 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* show only the panel matching the checked radio */
+  .tab-radio:nth-of-type(1):checked ~ .ide-body > .panel[data-panel-index="0"],
+  .tab-radio:nth-of-type(2):checked ~ .ide-body > .panel[data-panel-index="1"],
+  .tab-radio:nth-of-type(3):checked ~ .ide-body > .panel[data-panel-index="2"],
+  .tab-radio:nth-of-type(4):checked ~ .ide-body > .panel[data-panel-index="3"],
+  .tab-radio:nth-of-type(5):checked ~ .ide-body > .panel[data-panel-index="4"] {
+    display: block;
+  }
+
+  @keyframes panel-fade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* breadcrumb */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    background: rgba(22, 30, 52, 0.6);
+    border-bottom: 1px solid rgba(110, 231, 183, 0.08);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: rgba(187, 247, 208, 0.65);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .bc-glyph { color: var(--emerald-400); }
+  .bc-seg { color: rgba(187, 247, 208, 0.55); }
+  .bc-seg.active { color: var(--slate-100); font-weight: 500; }
+  .bc-icon { color: var(--lang-hue); margin-right: 0.2rem; }
+  .bc-sep { color: rgba(187, 247, 208, 0.3); margin: 0 0.05rem; }
+  .bc-spacer { flex: 1; }
+  .bc-action {
+    color: rgba(110, 231, 183, 0.5);
+    letter-spacing: 0.06em;
+    font-size: 0.62rem;
+  }
+
+  /* split layout */
+  .editor-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.85fr);
+    min-height: 480px;
+  }
+
+  /* ─── code pane ─── */
+  .code-pane {
+    position: relative;
+    padding: 1rem 0.5rem 1.5rem 0;
+    background:
+      radial-gradient(circle at top right, var(--lang-hue-soft), transparent 60%),
+      rgba(13, 22, 42, 0.6);
+    border-right: 1px solid rgba(110, 231, 183, 0.08);
+    overflow-x: auto;
+  }
+
+  .code-block {
+    margin: 0;
+    padding: 0;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: var(--slate-300);
+    white-space: pre;
+  }
+
+  .code-line {
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: 0;
+    padding: 0 0.5rem;
+    position: relative;
+    transition: background-color 180ms ease;
+  }
+
+  .code-line:hover {
+    background: rgba(110, 231, 183, 0.04);
+  }
+
+  .ln {
+    color: rgba(110, 231, 183, 0.32);
+    text-align: right;
+    padding-right: 0.85rem;
+    border-right: 1px solid rgba(110, 231, 183, 0.08);
+    font-size: 0.74rem;
+    user-select: none;
+  }
+
+  .lc {
+    padding-left: 1rem;
+    color: var(--slate-300);
+  }
+
+  .code-line-cursor .lc {
+    display: flex;
+    align-items: center;
+  }
+
+  .caret {
+    display: inline-block;
+    width: 8px;
+    height: 1em;
+    background: var(--emerald-400);
+    animation: caret-blink 1.05s steps(1) infinite;
+  }
+
+  @keyframes caret-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+
+  /* token coloring (custom syntax theme) */
+  .tk-kw    { color: rgb(167 139 250); font-weight: 500; }       /* violet */
+  .tk-ty    { color: var(--amber-300); }                          /* yellow */
+  .tk-str   { color: var(--emerald-300); }                        /* green */
+  .tk-cmt   { color: rgba(148, 163, 184, 0.7); font-style: italic; }
+  .tk-fn    { color: var(--sky-300); }                            /* blue */
+  .tk-attr  { color: rgb(248 113 113); font-weight: 500; }        /* red */
+  .tk-punct { color: rgba(187, 247, 208, 0.55); }
+  .tk-ident { color: var(--slate-100); }
+  .tk-num   { color: var(--amber-300); }
+  .tk-space { color: transparent; }
+  .tk-hash  { color: rgb(248 113 113); }
+
+  /* ─── meta pane ─── */
+  .meta-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 1.1rem 1.2rem 1.4rem;
+    background: rgba(22, 30, 52, 0.4);
+  }
+
+  .meta-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .meta-eyebrow {
+    color: rgba(110, 231, 183, 0.55);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .meta-title {
+    margin: 0;
+    color: var(--slate-100);
+    font-family: var(--display);
+    font-size: 1.45rem;
+    font-style: italic;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144, 'WONK' 1;
+    letter-spacing: -0.012em;
+    line-height: 1.15;
+  }
+
+  .meta-title a {
+    color: inherit;
+    text-decoration: none;
+    background-image: linear-gradient(transparent 88%, var(--lang-hue) 0);
+    background-size: 0% 100%;
+    background-repeat: no-repeat;
+    transition: background-size 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .meta-title a:hover { background-size: 100% 100%; }
+
+  .meta-lede {
+    margin: 0.25rem 0 0;
+    color: rgba(187, 247, 208, 0.78);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.55;
+  }
+
+  .meta-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+  }
+
+  .stat-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid rgba(110, 231, 183, 0.12);
+    border-radius: 6px;
+    background: rgba(13, 22, 42, 0.5);
+  }
+
+  .stat-num {
+    color: var(--lang-hue);
+    font-family: var(--mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-key {
+    margin-top: 0.25rem;
+    color: rgba(110, 231, 183, 0.55);
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .meta-tech {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.32rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .tech-pill {
+    padding: 0.16rem 0.55rem;
+    border: 1px solid rgba(110, 231, 183, 0.22);
+    border-radius: 4px;
+    background: rgba(110, 231, 183, 0.06);
+    color: var(--emerald-100);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+  }
+
+  .meta-highlights {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .meta-highlights li {
+    display: grid;
+    grid-template-columns: 1.6rem 1fr;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    line-height: 1.5;
+    color: var(--emerald-100);
+  }
+
+  .hl-num {
+    color: rgba(110, 231, 183, 0.4);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-align: right;
+  }
+
+  .meta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+  }
+
+  .action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    transition: transform 220ms ease, background-color 220ms ease, border-color 220ms ease;
+  }
+
+  .action.primary {
+    background: linear-gradient(135deg, var(--emerald-400), var(--emerald-500));
+    color: var(--navy-900);
+    box-shadow: 0 6px 18px rgba(52, 211, 153, 0.32);
+  }
+
+  .action.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(52, 211, 153, 0.48);
+  }
+
+  .action.ghost {
+    background: transparent;
+    border: 1px solid rgba(110, 231, 183, 0.32);
+    color: var(--emerald-100);
+  }
+
+  .action.ghost:hover {
+    border-color: var(--emerald-400);
+    background: rgba(110, 231, 183, 0.08);
+    transform: translateY(-2px);
+  }
+
+  .action-shortcut {
+    margin-left: 0.25rem;
+    opacity: 0.6;
+    font-size: 0.85em;
+  }
+
+  /* ─── status bar ─── */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.4rem 0.95rem;
+    background: var(--lang-hue);
+    color: var(--navy-950);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .sb-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+  }
+
+  .sb-glyph {
+    font-size: 0.78rem;
+  }
+
+  .sb-spacer { flex: 1; }
+
+  .sb-status .sb-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(13, 22, 42, 0.4);
+  }
+
+  .sb-status.is-active .sb-dot {
+    background: var(--navy-950);
+    box-shadow: 0 0 0 0 rgba(13, 22, 42, 0.6);
+    animation: sb-pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes sb-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(13, 22, 42, 0.6); }
+    70% { box-shadow: 0 0 0 6px rgba(13, 22, 42, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(13, 22, 42, 0); }
+  }
+
+  .sb-link { letter-spacing: 0.06em; }
+
+  /* ═══════════════════════  WORKSPACE (manifests)  ═══════════════════════ */
+  .workspace {
+    margin: 4rem auto 0;
+  }
+
+  .workspace-head {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px dashed rgba(187, 247, 208, 0.16);
+  }
+
+  .ws-glyph {
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    font-size: 1.2rem;
+  }
+
+  .ws-title {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+
+  .ws-title h3 {
+    margin: 0;
+    color: var(--slate-100);
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .ws-title p {
+    margin: 0.15rem 0 0;
+    color: rgba(110, 231, 183, 0.6);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .ws-rule {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(187, 247, 208, 0.18), transparent);
+  }
+
+  .ws-link {
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color 200ms ease, transform 200ms ease;
+  }
+
+  .ws-link:hover {
+    color: var(--emerald-300);
+    transform: translateX(3px);
+  }
+
+  /* manifest grid */
+  .manifest-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.2rem;
+  }
+
+  .manifest {
+    position: relative;
+  }
+
+  .manifest.revealed {
+    animation: rise 360ms ease both;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .manifest-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    height: 100%;
+    padding: 1rem 1.05rem 1rem 1.25rem;
+    border: 1px solid rgba(187, 247, 208, 0.12);
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(34, 46, 78, 0.65), rgba(22, 30, 52, 0.55));
+    backdrop-filter: blur(8px);
+    transition:
+      transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 240ms ease,
+      box-shadow 260ms ease;
+    overflow: hidden;
+  }
+
+  .manifest-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 100%;
+    background: radial-gradient(circle at top right, var(--lang-hue-soft), transparent 70%);
+    opacity: 0;
+    transition: opacity 320ms ease;
+    pointer-events: none;
+  }
+
+  .manifest:hover .manifest-card {
+    transform: translateY(-4px);
+    border-color: var(--lang-hue);
+    box-shadow: 0 18px 44px rgba(4, 12, 32, 0.5);
+  }
+
+  .manifest:hover .manifest-card::before {
+    opacity: 0.55;
+  }
+
+  .manifest-rail {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(
+      180deg,
+      var(--lang-hue) 0%,
+      var(--lang-hue) 35%,
+      transparent 100%
+    );
+  }
+
+  .manifest-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px dashed rgba(187, 247, 208, 0.12);
+  }
+
+  .manifest-num {
+    color: rgba(110, 231, 183, 0.45);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+  }
+
+  .manifest-glyph {
+    color: var(--lang-hue);
+    font-size: 0.95rem;
+  }
+
+  .manifest-lang {
+    color: var(--slate-100);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .manifest-spacer { flex: 1; }
+
+  .manifest-version {
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: rgba(110, 231, 183, 0.08);
+    border: 1px solid rgba(110, 231, 183, 0.22);
+    color: var(--emerald-300);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* sections inside the manifest body */
+  .manifest-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .ms-key {
+    color: rgb(248 113 113);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .ms-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+
+  .ms-rows li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.45rem;
+  }
+
+  .ms-prop {
+    color: var(--sky-300);
+    min-width: 4.5rem;
+  }
+
+  .ms-eq {
+    color: rgba(187, 247, 208, 0.45);
+  }
+
+  .ms-val {
+    color: var(--emerald-300);
+  }
+
+  .ms-arr {
+    color: var(--amber-300);
+  }
+
+  .ms-link {
+    text-decoration: none;
+    transition: color 220ms ease;
+  }
+
+  .ms-link:hover {
+    color: var(--emerald-100);
+  }
+
+  .manifest-desc .repo-description {
+    margin: 0;
+    color: rgba(187, 247, 208, 0.78);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    line-height: 1.55;
+    padding-left: 0.85rem;
+    border-left: 2px solid rgba(110, 231, 183, 0.22);
+  }
+
+  .repo-languages {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.45rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+
+  .repo-languages li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.5rem;
+    border: 1px dashed rgba(110, 231, 183, 0.22);
+    border-radius: 4px;
+    background: rgba(110, 231, 183, 0.04);
+    color: var(--emerald-100);
+  }
+
+  .dep-plus {
+    color: var(--lang-hue);
+    font-weight: 700;
+  }
+
+  /* manifest footer */
+  .manifest-foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.85rem;
+    margin-top: auto;
+    padding-top: 0.7rem;
+    border-top: 1px dashed rgba(187, 247, 208, 0.12);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+
+  .foot-stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .foot-stat {
+    color: rgba(187, 247, 208, 0.6);
+  }
+
+  .foot-spacer { flex: 1; }
+
+  .foot-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .foot-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--emerald-100);
+    text-decoration: none;
+    transition: color 200ms ease, transform 200ms ease;
+  }
+
+  .foot-links a:hover {
+    color: var(--emerald-400);
+    transform: translateY(-1px);
+  }
+
+  .foot-label {
+    letter-spacing: 0.06em;
+  }
+
+  .active-dot {
+    color: var(--emerald-400);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+  }
+
+  /* show-more */
+  .workspace-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.2rem;
+  }
+
+  .show-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    border: 1px solid rgba(110, 231, 183, 0.32);
+    border-radius: 999px;
+    background: rgba(28, 38, 70, 0.5);
+    padding: 0.7rem 1.4rem;
+    color: var(--emerald-400);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition: color 180ms ease, transform 180ms ease, background-color 220ms ease, border-color 220ms ease;
+  }
+
+  .show-more .dash {
+    display: inline-block;
+    width: 28px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .show-more:hover,
+  .show-more:focus-visible {
+    color: var(--emerald-300);
+    background: rgba(110, 231, 183, 0.08);
+    border-color: var(--emerald-400);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .show-more[disabled] {
+    opacity: 0.5;
+    cursor: wait;
+  }
+
+  /* ═══════════════════════  LIGHT MODE  ═══════════════════════ */
+  :global(html:not(.dark)) .ide {
+    background: linear-gradient(180deg, rgb(248 250 252), rgb(241 245 249));
+    border-color: rgb(226 232 240);
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+  }
+
+  :global(html:not(.dark)) .ide-chrome {
+    background: rgb(241 245 249);
+    border-bottom-color: rgb(226 232 240);
+  }
+
+  :global(html:not(.dark)) .chrome-title {
+    color: rgb(71 85 105);
+  }
+
+  :global(html:not(.dark)) .ide-tabs {
+    background: rgb(241 245 249);
+    border-bottom-color: rgb(226 232 240);
+  }
+
+  :global(html:not(.dark)) .tab-fade-right {
+    background: linear-gradient(90deg, transparent, rgb(241 245 249));
+  }
+
+  :global(html:not(.dark)) .tab {
+    color: rgb(100 116 139);
+  }
+
+  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="0"],
+  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="1"],
+  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="2"] {
+    color: rgb(15 23 42);
+    background: rgb(255 255 255);
+  }
+
+  :global(html:not(.dark)) .ide-body { background: rgb(255 255 255); }
+  :global(html:not(.dark)) .breadcrumb { background: rgb(248 250 252); border-bottom-color: rgb(226 232 240); color: rgb(51 65 85); }
+  :global(html:not(.dark)) .bc-seg.active { color: rgb(15 23 42); }
+
+  :global(html:not(.dark)) .code-pane {
+    background: rgb(252 252 254);
+    border-right-color: rgb(226 232 240);
+  }
+
+  :global(html:not(.dark)) .code-block { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .ln { color: rgb(148 163 184); border-right-color: rgb(226 232 240); }
+  :global(html:not(.dark)) .tk-cmt { color: rgb(100 116 139); }
+  :global(html:not(.dark)) .tk-kw { color: rgb(124 58 237); }
+  :global(html:not(.dark)) .tk-ty { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .tk-str { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .tk-fn { color: rgb(29 78 216); }
+  :global(html:not(.dark)) .tk-attr { color: rgb(190 18 60); }
+  :global(html:not(.dark)) .tk-punct { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .tk-ident { color: rgb(15 23 42); }
+
+  :global(html:not(.dark)) .meta-pane { background: rgb(248 250 252); }
+  :global(html:not(.dark)) .meta-title { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .meta-lede,
+  :global(html:not(.dark)) .meta-highlights li { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .stat-cell { background: rgb(255 255 255); border-color: rgb(226 232 240); }
+  :global(html:not(.dark)) .tech-pill { background: rgb(255 255 255); color: rgb(15 118 110); border-color: rgba(16, 185, 129, 0.3); }
+
+  :global(html:not(.dark)) .manifest-card {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+  }
+
+  :global(html:not(.dark)) .manifest-lang { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .manifest-desc .repo-description { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .ms-key { color: rgb(190 18 60); }
+  :global(html:not(.dark)) .ms-prop { color: rgb(29 78 216); }
+  :global(html:not(.dark)) .ms-val { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .ms-arr { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .repo-languages li { background: rgb(248 250 252); color: rgb(15 118 110); }
+  :global(html:not(.dark)) .ws-title h3 { color: rgb(15 23 42); }
+
+  /* ═══════════════════════  RESPONSIVE  ═══════════════════════ */
+  @media (max-width: 900px) {
+    .editor-split {
+      grid-template-columns: 1fr;
+      min-height: 0;
+    }
+
+    .code-pane {
+      border-right: 0;
+      border-bottom: 1px solid rgba(110, 231, 183, 0.08);
+    }
+
+    .meta-pane {
+      padding: 1rem 1.1rem 1.2rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .ide-chrome { padding: 0.5rem 0.7rem; }
+    .chrome-title { display: none; }
+    .tab { padding: 0.55rem 0.7rem; font-size: 0.7rem; }
+    .tab-close { display: none; }
+
+    .breadcrumb {
+      font-size: 0.65rem;
+    }
+
+    .breadcrumb .bc-action,
+    .breadcrumb .bc-seg:not(.active):not(:nth-last-child(2)) {
+      display: none;
+    }
+
+    .meta-stats { grid-template-columns: repeat(3, 1fr); }
+    .stat-num { font-size: 1rem; }
+
+    .statusbar { font-size: 0.6rem; gap: 0.5rem; flex-wrap: wrap; }
+    .statusbar .sb-cell:nth-child(n+5):not(.sb-link):not(.sb-status) { display: none; }
+
+    .manifest-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .workspace-head {
+      flex-wrap: wrap;
+    }
+
+    .ws-rule { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel,
+    .caret,
+    .sb-status.is-active .sb-dot,
+    .manifest.revealed {
+      animation: none;
+    }
+  }
+</style>

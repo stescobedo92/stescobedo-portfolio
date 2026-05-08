@@ -1,5 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+const rawBase = import.meta.env.BASE_URL || '/';
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
 ---
 
 <Layout title="About me | trianadev">
@@ -46,7 +50,7 @@ import Layout from '../layouts/Layout.astro';
 			<div class="relative order-1 md:order-2">
 				<div class="aspect-square w-64 mx-auto md:w-96">
 					<img
-						src="/ste-avatar.jpeg"
+						src={withBase('ste-avatar.jpeg')}
 						alt="Sergio Triana Escobedo"
 						class="rounded-full w-full h-full object-cover border-8 border-primary-500/20"
 					/>
@@ -64,7 +68,7 @@ import Layout from '../layouts/Layout.astro';
 				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
 					<div class="space-y-4">
 						<img
-							src="/Apex_Systems.svg"
+							src={withBase('Apex_Systems.png')}
 							alt="Apex Systems"
 							class="h-12 w-auto"
 						/>
@@ -83,7 +87,7 @@ import Layout from '../layouts/Layout.astro';
 				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
 					<div class="space-y-4">
 						<img
-							src="/Peraton.svg"
+							src={withBase('Peraton.svg')}
 							alt="Peraton"
 							class="h-12 w-auto"
 						/>
@@ -102,7 +106,7 @@ import Layout from '../layouts/Layout.astro';
 				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
 					<div class="space-y-4">
 						<img
-							src="/Kimia.svg"
+							src={withBase('Kimia.svg')}
 							alt="Kimia Group"
 							class="h-12 w-auto"
 						/>
@@ -122,7 +126,7 @@ import Layout from '../layouts/Layout.astro';
 				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
 					<div class="space-y-4">
 						<img
-							src="/CGI.svg"
+							src={withBase('CGI.svg')}
 							alt="GSoft Innovations"
 							class="h-12 w-auto"
 						/>
@@ -141,7 +145,7 @@ import Layout from '../layouts/Layout.astro';
 				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
 					<div class="space-y-4">
 						<img
-							src="/MCSystems.svg"
+							src={withBase('MCSystems.svg')}
 							alt="Management Control Systems Limited (MC Systems)"
 							class="h-12 w-auto"
 						/>
@@ -160,7 +164,7 @@ import Layout from '../layouts/Layout.astro';
 				<div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
 					<div class="space-y-4">
 						<img
-							src="/NTSprint.svg"
+							src={withBase('NTSprint.svg')}
 							alt="NTSprint"
 							class="h-12 w-auto"
 						/>

@@ -1,0 +1,402 @@
+---
+import Icon from './Icon.astro';
+import { profile } from '../../data/portfolio';
+
+const encodedEmail = Buffer.from(profile.email.split('').reverse().join('')).toString('base64');
+
+const iconByNetwork = {
+  GitHub: 'github',
+  LinkedIn: 'linkedin',
+  StackOverflow: 'stackoverflow',
+  X: 'x',
+} as const;
+---
+
+<!-- LEFT RAIL: social icons + scroll-driven data spine -->
+<aside class="rail rail-left" aria-label="Social links">
+  <span class="rail-cap" aria-hidden="true">Connect</span>
+  <ul class="social-list">
+    {profile.socials.map((social, idx) => (
+      <li>
+        <a
+          href={social.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={social.network}
+          data-social-idx={String(idx).padStart(2, '0')}
+        >
+          <span class="social-ring" aria-hidden="true"></span>
+          <Icon name={iconByNetwork[social.network] ?? 'github'} class="h-4 w-4" />
+        </a>
+      </li>
+    ))}
+  </ul>
+
+  <!-- Scroll-driven data spine -->
+  <div class="spine" aria-hidden="true">
+    <span class="spine-line">
+      <span class="spine-fill" id="spine-fill"></span>
+    </span>
+    <span class="spine-marks">
+      {Array.from({ length: 4 }).map(() => <span class="mark"></span>)}
+    </span>
+    <span class="spine-pulse" aria-hidden="true"></span>
+  </div>
+</aside>
+
+<!-- RIGHT RAIL: scramble email + postmark -->
+<aside class="rail rail-right" aria-label="Email">
+  <span class="rail-cap" aria-hidden="true">Reach out</span>
+  <button
+    type="button"
+    class="email-btn"
+    data-email={encodedEmail}
+    aria-label="Copy email address"
+  ></button>
+  <span class="tooltip" role="status">✓ Copied</span>
+  <span class="postmark" aria-hidden="true">
+    <span class="postmark-ring"></span>
+    <span class="postmark-text">@stescobedo92</span>
+  </span>
+</aside>
+
+<script>
+  type Btn = HTMLButtonElement;
+  const SCRAMBLE_CHARS = '▓▒░!<>-_\\/[]{}—=+*^?#$%';
+
+  const scramble = (target: HTMLElement, finalText: string, duration = 700) => {
+    const chars = finalText.split('');
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const settled = Math.floor(t * chars.length);
+      const out = chars
+        .map((c, i) => {
+          if (i < settled) return c;
+          if (c === ' ' || c === '@' || c === '.') return c;
+          return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+        })
+        .join('');
+      target.textContent = out;
+      if (t < 1) requestAnimationFrame(step);
+      else target.textContent = finalText;
+    };
+    requestAnimationFrame(step);
+  };
+
+  const initializeRails = () => {
+    // EMAIL SCRAMBLE + COPY
+    const button = document.querySelector<Btn>('.rail-right .email-btn');
+    const tooltip = document.querySelector<HTMLElement>('.rail-right .tooltip');
+    if (button && tooltip && button.dataset.ready !== 'true') {
+      button.dataset.ready = 'true';
+      const decoded = window.atob(button.dataset.email || '').split('').reverse().join('');
+      button.textContent = decoded;
+
+      let scrambling = false;
+      const triggerScramble = () => {
+        if (scrambling) return;
+        scrambling = true;
+        scramble(button, decoded, 480);
+        window.setTimeout(() => { scrambling = false; }, 520);
+      };
+      button.addEventListener('mouseenter', triggerScramble);
+      button.addEventListener('focus', triggerScramble);
+
+      button.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(decoded);
+          tooltip.classList.add('show');
+          window.setTimeout(() => tooltip.classList.remove('show'), 1600);
+        } catch {
+          // clipboard may be unavailable; fail silently
+        }
+      });
+    }
+
+    // SCROLL-DRIVEN SPINE FILL
+    const fill = document.getElementById('spine-fill');
+    if (fill && (fill as any).dataset.ready !== 'true') {
+      (fill as any).dataset.ready = 'true';
+      const update = () => {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+        (fill as HTMLElement).style.height = pct.toFixed(2) + '%';
+      };
+      window.addEventListener('scroll', update, { passive: true });
+      update();
+    }
+  };
+
+  document.addEventListener('astro:page-load', initializeRails);
+  initializeRails();
+</script>
+
+<style>
+  .rail {
+    position: fixed;
+    bottom: 0;
+    z-index: 20;
+    display: none;
+    width: 3rem;
+    align-items: center;
+    flex-direction: column;
+    color: rgb(187 247 208);
+  }
+
+  .rail-left {
+    left: 2.5rem;
+  }
+
+  .rail-right {
+    right: 2.5rem;
+  }
+
+  /* RAIL CAP — small monospace label at top */
+  .rail-cap {
+    margin-bottom: 1.1rem;
+    color: rgba(110, 231, 183, 0.7);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+  }
+
+  /* SOCIAL ICON LIST */
+  .social-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .social-list a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: rgb(187 247 208);
+    text-decoration: none;
+    transition: color 220ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .social-list a::before {
+    content: attr(data-social-idx);
+    position: absolute;
+    left: -22px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(110, 231, 183, 0.55);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    opacity: 0;
+    transition: opacity 240ms ease, transform 240ms ease;
+  }
+
+  .social-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    transition: border-color 240ms ease, transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 240ms ease;
+  }
+
+  .social-list a:hover .social-ring,
+  .social-list a:focus-visible .social-ring {
+    border-color: rgb(110 231 183);
+    transform: scale(1.1);
+    background: rgba(110, 231, 183, 0.08);
+  }
+
+  .social-list a:hover,
+  .social-list a:focus-visible {
+    color: rgb(110 231 183);
+    transform: translateY(-3px);
+    outline: none;
+  }
+
+  .social-list a:hover::before,
+  .social-list a:focus-visible::before {
+    opacity: 1;
+    transform: translate(-2px, -50%);
+  }
+
+  /* SCROLL-DRIVEN DATA SPINE */
+  .spine {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1.1rem;
+    height: 8rem;
+  }
+
+  .spine-line {
+    position: relative;
+    width: 1px;
+    height: 100%;
+    background: rgba(187, 247, 208, 0.22);
+    overflow: hidden;
+  }
+
+  .spine-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 0%;
+    background: linear-gradient(to bottom, rgb(110 231 183), rgb(52 211 153));
+    box-shadow: 0 0 8px rgba(110, 231, 183, 0.55);
+    transition: height 100ms linear;
+  }
+
+  .spine-marks {
+    position: absolute;
+    top: 0;
+    left: 4px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .mark {
+    width: 4px;
+    height: 1px;
+    background: rgba(187, 247, 208, 0.32);
+  }
+
+  .spine-pulse {
+    margin-top: 0.4rem;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgb(110 231 183);
+    box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.55);
+    animation: pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.55); }
+    70% { box-shadow: 0 0 0 12px rgba(110, 231, 183, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0); }
+  }
+
+  /* RIGHT RAIL — EMAIL */
+  .email-btn {
+    position: relative;
+    display: block;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    color: rgb(187 247 208);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.18em;
+    writing-mode: vertical-rl;
+    padding: 0.2rem 0.4rem;
+    transition: color 220ms ease, transform 220ms ease, letter-spacing 320ms ease;
+  }
+
+  .email-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 0;
+    background: rgb(110 231 183);
+    transform: translate(-50%, -50%);
+    transition: height 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: -1;
+  }
+
+  .email-btn:hover,
+  .email-btn:focus-visible {
+    color: rgb(110 231 183);
+    transform: translateY(-3px);
+    letter-spacing: 0.22em;
+    outline: none;
+  }
+
+  .email-btn:hover::after,
+  .email-btn:focus-visible::after {
+    height: 100%;
+  }
+
+  .tooltip {
+    position: absolute;
+    top: -2.2rem;
+    left: 50%;
+    transform: translate(-50%, 6px);
+    padding: 0.3rem 0.65rem;
+    border: 1px solid rgba(110, 231, 183, 0.4);
+    border-radius: 4px;
+    background: rgba(22, 30, 52, 0.94);
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease, transform 200ms ease;
+  }
+
+  .tooltip.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  /* POSTMARK STAMP */
+  .postmark {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
+    width: 38px;
+    height: 38px;
+  }
+
+  .postmark-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px dashed rgba(110, 231, 183, 0.5);
+    animation: rotate 18s linear infinite;
+  }
+
+  .postmark-text {
+    color: rgba(110, 231, 183, 0.75);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.08em;
+  }
+
+  @keyframes rotate {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spine-pulse,
+    .postmark-ring {
+      animation: none;
+    }
+  }
+
+  @media (min-width: 1180px) {
+    .rail {
+      display: flex;
+    }
+  }
+</style>

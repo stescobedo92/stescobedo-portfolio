@@ -1,0 +1,1212 @@
+---
+import Section from './Section.astro';
+import { work } from '../../data/portfolio';
+
+const rawBase = import.meta.env.BASE_URL || '/';
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
+
+// Deterministic short hash from a string (FNV-1a 32-bit) — gives every role a stable git-like SHA
+const shortSha = (input: string) => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, '0').slice(0, 7);
+};
+
+// Parse "Sep 2022 - Present" / "May 2023 - Oct 2024"
+const monthMap: Record<string, number> = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
+const parseDate = (raw: string) => {
+  const parts = raw.trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  const m = monthMap[parts[0].slice(0, 3).toLowerCase()];
+  const y = Number(parts[1]);
+  if (m === undefined || Number.isNaN(y)) return null;
+  return new Date(y, m, 1);
+};
+
+const tenure = (range: string) => {
+  const [startRaw, endRaw] = range.split('-').map((s) => s.trim());
+  const start = parseDate(startRaw);
+  const end = endRaw.toLowerCase().includes('present') ? new Date() : parseDate(endRaw);
+  if (!start || !end) return '';
+  const months = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1);
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  if (y === 0) return `${m}mo`;
+  if (m === 0) return `${y}y`;
+  return `${y}y ${m}mo`;
+};
+
+const yearOf = (range: string) => {
+  const m = range.match(/(\d{4})\s*-\s*(\d{4}|Present)/i);
+  if (!m) return { from: '—', to: '—' };
+  return { from: m[1], to: m[2].toLowerCase() === 'present' ? 'now' : m[2] };
+};
+
+// Categorize roles for filter chips
+const tagFor = (role: string) => {
+  const r = role.toLowerCase();
+  if (r.includes('full')) return 'fullstack';
+  if (r.includes('back')) return 'backend';
+  return 'engineering';
+};
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const totalYears = (() => {
+  const all = work.flatMap((w) => {
+    const [s, e] = w.range.split('-').map((x) => x.trim());
+    const start = parseDate(s);
+    const end = e.toLowerCase().includes('present') ? new Date() : parseDate(e);
+    return start && end ? [{ start, end }] : [];
+  });
+  if (all.length === 0) return 0;
+  const min = new Date(Math.min(...all.map((r) => r.start.getTime())));
+  const max = new Date(Math.max(...all.map((r) => r.end.getTime())));
+  const months = (max.getFullYear() - min.getFullYear()) * 12 + (max.getMonth() - min.getMonth()) + 1;
+  return Math.round(months / 12);
+})();
+---
+
+<Section title="Work experience" id="experience">
+  <!-- TERMINAL TOOLBAR -->
+  <div class="git-toolbar" aria-label="Git log toolbar">
+    <div class="terminal-prompt" aria-hidden="true">
+      <span class="prompt-user">stescobedo</span>
+      <span class="prompt-at">@</span>
+      <span class="prompt-host">career</span>
+      <span class="prompt-colon">:</span>
+      <span class="prompt-path">~/work</span>
+      <span class="prompt-dollar">$</span>
+      <span class="prompt-cmd">
+        <span class="cmd-bin">git</span>
+        <span class="cmd-sub">log</span>
+        <span class="cmd-flag">--graph</span>
+        <span class="cmd-flag">--all</span>
+      </span>
+      <span class="prompt-caret" aria-hidden="true"></span>
+    </div>
+
+    <div class="git-stats" role="group" aria-label="Career stats">
+      <span class="stat">
+        <span class="stat-key">commits</span>
+        <span class="stat-val">{work.length}</span>
+      </span>
+      <span class="stat-sep" aria-hidden="true"></span>
+      <span class="stat">
+        <span class="stat-key">span</span>
+        <span class="stat-val">{totalYears}y+</span>
+      </span>
+      <span class="stat-sep" aria-hidden="true"></span>
+      <span class="stat">
+        <span class="stat-key">HEAD</span>
+        <span class="stat-val stat-head">main</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- FILTER CHIPS -->
+  <div class="git-filters" role="toolbar" aria-label="Filter career commits">
+    <button type="button" class="chip is-active" data-filter="all">
+      <span class="chip-flag">--all</span>
+      <span class="chip-count">{work.length}</span>
+    </button>
+    <button type="button" class="chip" data-filter="current">
+      <span class="chip-dot" aria-hidden="true"></span>
+      <span class="chip-flag">--current</span>
+    </button>
+    <button type="button" class="chip" data-filter="backend">
+      <span class="chip-flag">backend</span>
+    </button>
+    <button type="button" class="chip" data-filter="fullstack">
+      <span class="chip-flag">full-stack</span>
+    </button>
+  </div>
+
+  <!-- GIT LOG GRAPH -->
+  <ol class="git-log" aria-label="Career timeline">
+    {work.map((item, index) => {
+      const { from, to } = yearOf(item.range);
+      const isCurrent = to === 'now';
+      const sha = shortSha(`${item.company}-${item.role}-${item.range}`);
+      const tag = tagFor(item.role);
+      const len = tenure(item.range);
+      const branch = isCurrent
+        ? 'HEAD → main'
+        : `feat/${item.company.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+      return (
+        <li
+          class={`commit ${isCurrent ? 'is-current' : ''}`}
+          data-tag={tag}
+          data-current={isCurrent ? 'true' : 'false'}
+          style={`--delay: ${index * 70}ms;`}
+        >
+          <!-- LEFT RAIL: graph dot + branch line + year -->
+          <div class="rail" aria-hidden="true">
+            <span class="rail-year">{to === 'now' ? 'now' : to}</span>
+            <span class="rail-dot">
+              <span class="rail-dot-core"></span>
+              <span class="rail-dot-ring"></span>
+            </span>
+            <span class="rail-line"></span>
+            <span class="rail-year-from">{from}</span>
+          </div>
+
+          <!-- COMMIT CARD -->
+          <article class="commit-card">
+            <span class="card-corner tl" aria-hidden="true"></span>
+            <span class="card-corner tr" aria-hidden="true"></span>
+            <span class="card-corner bl" aria-hidden="true"></span>
+            <span class="card-corner br" aria-hidden="true"></span>
+
+            <header class="commit-head">
+              <span class="commit-sha" title="commit hash">
+                <span class="sha-glyph">⌥</span>
+                <span class="sha-val">{sha}</span>
+              </span>
+
+              <span class={`branch-tag ${isCurrent ? 'is-head' : ''}`}>
+                {isCurrent && <span class="branch-arrow" aria-hidden="true">→</span>}
+                <span class="branch-name">{branch}</span>
+              </span>
+
+              <span class="commit-spacer" aria-hidden="true"></span>
+
+              <span class="commit-meta">
+                <span class="meta-cell">
+                  <span class="meta-key">date</span>
+                  <span class="meta-val">{from} — {to}</span>
+                </span>
+                <span class="meta-cell">
+                  <span class="meta-key">tenure</span>
+                  <span class="meta-val">{len}</span>
+                </span>
+              </span>
+
+              {isCurrent && (
+                <span class="now-pill" aria-label="Currently active">
+                  <span class="now-dot"></span>
+                  <span>active</span>
+                </span>
+              )}
+            </header>
+
+            <div class="commit-message">
+              <span class="msg-prefix">feat<span class="msg-paren">(</span>career<span class="msg-paren">)</span><span class="msg-colon">:</span></span>
+              <span class="msg-role">{item.role}</span>
+              <span class="msg-at">@</span>
+              <span class="msg-company">{item.company}</span>
+            </div>
+
+            <p class="commit-body">{item.summary}</p>
+
+            <div class="commit-stats">
+              <span class="stat-pill">
+                <span class="stat-pill-key">location</span>
+                <span class="stat-pill-val">{item.location}</span>
+              </span>
+              <span class="stat-pill">
+                <span class="stat-pill-key">tag</span>
+                <span class="stat-pill-val tag-emph">#{tag}</span>
+              </span>
+              <span class="stat-pill diff">
+                <span class="diff-add">+{item.highlights.length}</span>
+                <span class="diff-key">files changed</span>
+              </span>
+            </div>
+
+            <details class="commit-diff">
+              <summary>
+                <span class="diff-arrow" aria-hidden="true">▸</span>
+                <span class="diff-summary-text">show diff</span>
+                <span class="diff-summary-hint" aria-hidden="true">(click to expand)</span>
+              </summary>
+              <ul class="diff-list">
+                {item.highlights.map((highlight, i) => (
+                  <li class="diff-line">
+                    <span class="diff-num">{pad2(i + 1)}</span>
+                    <span class="diff-plus" aria-hidden="true">+</span>
+                    <span class="diff-text">{highlight}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+
+            <footer class="commit-foot">
+              <div class="logo-chip">
+                <img
+                  src={withBase(item.logo)}
+                  alt={`${item.company} logo`}
+                  width="80"
+                  height="28"
+                  loading="lazy"
+                />
+              </div>
+              <span class="signoff">
+                <span class="signoff-key">Signed-off-by:</span>
+                <span class="signoff-val">Sergio Triana &lt;stescobedo&gt;</span>
+              </span>
+            </footer>
+          </article>
+        </li>
+      );
+    })}
+  </ol>
+
+  <!-- FOOTER PROMPT -->
+  <div class="git-footer">
+    <span class="footer-hash">●</span>
+    <span class="footer-text">
+      <span class="footer-key">EOF</span>
+      <span class="footer-sep">·</span>
+      <span class="footer-val">git log: {work.length} commits across {totalYears}+ years</span>
+    </span>
+  </div>
+</Section>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&display=swap');
+
+  :where(.git-log, .git-toolbar, .git-filters, .git-footer) {
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --display: 'Fraunces', Georgia, serif;
+    --emerald-100: rgb(187 247 208);
+    --emerald-300: rgb(167 243 208);
+    --emerald-400: rgb(110 231 183);
+    --emerald-500: rgb(52 211 153);
+    --emerald-600: rgb(16 185 129);
+    --navy-900: rgb(22 30 52);
+    --navy-800: rgb(28 38 70);
+    --navy-700: rgb(34 46 78);
+    --slate-300: rgb(248 250 252);
+  }
+
+  /* ─────────────────────────  TOOLBAR (terminal prompt)  ───────────────────────── */
+  .git-toolbar {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    margin: -0.75rem 0 1.5rem;
+    padding: 0.85rem 1.1rem;
+    border: 1px solid rgba(187, 247, 208, 0.14);
+    border-radius: 12px;
+    background:
+      linear-gradient(180deg, rgba(34, 46, 78, 0.4), rgba(22, 30, 52, 0.6)),
+      repeating-linear-gradient(
+        135deg,
+        transparent 0,
+        transparent 14px,
+        rgba(110, 231, 183, 0.04) 14px,
+        rgba(110, 231, 183, 0.04) 15px
+      );
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+
+  .git-toolbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 0% 50%, rgba(110, 231, 183, 0.08), transparent 40%);
+    pointer-events: none;
+  }
+
+  .terminal-prompt {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.32rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.2;
+  }
+
+  .prompt-user { color: var(--emerald-400); font-weight: 700; }
+  .prompt-at { color: rgba(187, 247, 208, 0.5); }
+  .prompt-host { color: rgb(125 211 252); font-weight: 700; }
+  .prompt-colon { color: rgba(187, 247, 208, 0.5); }
+  .prompt-path { color: rgb(252 211 77); }
+  .prompt-dollar { color: var(--emerald-400); margin: 0 0.2rem 0 0.45rem; }
+  .prompt-cmd { display: inline-flex; gap: 0.4rem; color: var(--slate-300); }
+  .cmd-bin { color: var(--slate-300); font-weight: 600; }
+  .cmd-sub { color: rgb(196 181 253); }
+  .cmd-flag { color: rgba(187, 247, 208, 0.7); }
+
+  .prompt-caret {
+    display: inline-block;
+    width: 8px;
+    height: 1.05em;
+    margin-left: 0.3rem;
+    background: var(--emerald-400);
+    animation: blink 1.05s steps(1) infinite;
+    vertical-align: -3px;
+  }
+
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+
+  .git-stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+
+  .stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+
+  .stat-key {
+    color: rgba(110, 231, 183, 0.65);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-size: 0.62rem;
+  }
+
+  .stat-val {
+    color: var(--slate-300);
+    font-weight: 700;
+  }
+
+  .stat-val.stat-head {
+    color: var(--emerald-400);
+  }
+
+  .stat-sep {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(187, 247, 208, 0.25);
+  }
+
+  /* ─────────────────────────  FILTERS  ───────────────────────── */
+  .git-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0 0 2rem;
+    padding-left: 0.25rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.42rem 0.8rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    border-radius: 999px;
+    background: rgba(28, 38, 70, 0.55);
+    color: rgba(187, 247, 208, 0.75);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: color 200ms ease, background-color 220ms ease, border-color 220ms ease, transform 180ms ease;
+  }
+
+  .chip:hover {
+    color: var(--emerald-100);
+    border-color: rgba(110, 231, 183, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .chip.is-active {
+    color: var(--navy-900);
+    background: linear-gradient(135deg, var(--emerald-400), var(--emerald-500));
+    border-color: transparent;
+    box-shadow: 0 6px 20px rgba(52, 211, 153, 0.32);
+  }
+
+  .chip-count {
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(22, 30, 52, 0.25);
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+
+  .chip:not(.is-active) .chip-count {
+    background: rgba(110, 231, 183, 0.12);
+    color: var(--emerald-400);
+  }
+
+  .chip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--emerald-400);
+    box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.55);
+    animation: pulse-soft 2.4s ease-out infinite;
+  }
+
+  .chip.is-active .chip-dot {
+    background: var(--navy-900);
+    animation: none;
+  }
+
+  @keyframes pulse-soft {
+    0% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.6); }
+    70% { box-shadow: 0 0 0 7px rgba(110, 231, 183, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0); }
+  }
+
+  /* ─────────────────────────  GIT LOG  ───────────────────────── */
+  .git-log {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    max-width: 980px;
+  }
+
+  .commit {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: 0.4rem;
+    opacity: 0;
+    transform: translateY(18px);
+    animation: rise-in 620ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation-delay: var(--delay);
+    transition: opacity 280ms ease, transform 280ms ease;
+  }
+
+  .commit.is-hidden {
+    display: none;
+  }
+
+  @keyframes rise-in {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─────────────────  LEFT RAIL (the git graph)  ───────────────── */
+  .rail {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 0.45rem;
+  }
+
+  .rail-year {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--emerald-400);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .commit:not(.is-current) .rail-year {
+    color: rgba(187, 247, 208, 0.6);
+    font-weight: 500;
+  }
+
+  .rail-dot {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    z-index: 2;
+  }
+
+  .rail-dot-core {
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: var(--navy-900);
+    border: 2px solid var(--emerald-400);
+    transition: background 240ms ease, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .rail-dot-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px dashed rgba(110, 231, 183, 0.3);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 280ms ease, transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .commit.is-current .rail-dot-core {
+    background: var(--emerald-400);
+    box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.6);
+    animation: dot-pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes dot-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.6); }
+    70% { box-shadow: 0 0 0 12px rgba(110, 231, 183, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0); }
+  }
+
+  .commit:hover .rail-dot-core {
+    transform: scale(1.15);
+    background: var(--emerald-400);
+  }
+
+  .commit:hover .rail-dot-ring {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+
+  .rail-line {
+    flex: 1;
+    width: 1px;
+    margin: 0.4rem 0;
+    background: linear-gradient(
+      180deg,
+      rgba(110, 231, 183, 0.6) 0%,
+      rgba(110, 231, 183, 0.18) 50%,
+      rgba(110, 231, 183, 0.05) 100%
+    );
+    min-height: 80px;
+  }
+
+  .commit:last-child .rail-line {
+    background: linear-gradient(
+      180deg,
+      rgba(110, 231, 183, 0.4) 0%,
+      transparent 100%
+    );
+  }
+
+  .rail-year-from {
+    margin-top: 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    color: rgba(187, 247, 208, 0.4);
+  }
+
+  /* ─────────────────  COMMIT CARD  ───────────────── */
+  .commit-card {
+    position: relative;
+    padding: 1rem 1.15rem 1.05rem;
+    border: 1px solid rgba(187, 247, 208, 0.12);
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(34, 46, 78, 0.62), rgba(28, 38, 70, 0.5));
+    backdrop-filter: blur(8px);
+    transition:
+      transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 240ms ease,
+      box-shadow 280ms ease;
+    overflow: hidden;
+  }
+
+  .commit-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at top left,
+      rgba(110, 231, 183, 0.08),
+      transparent 50%
+    );
+    opacity: 0;
+    transition: opacity 320ms ease;
+    pointer-events: none;
+  }
+
+  .commit:hover .commit-card {
+    transform: translateX(4px);
+    border-color: rgba(110, 231, 183, 0.45);
+    box-shadow: 0 14px 38px rgba(4, 12, 32, 0.45);
+  }
+
+  .commit:hover .commit-card::before {
+    opacity: 1;
+  }
+
+  .commit.is-current .commit-card {
+    border-color: rgba(110, 231, 183, 0.32);
+    background:
+      linear-gradient(180deg, rgba(34, 46, 78, 0.78), rgba(28, 38, 70, 0.62)),
+      radial-gradient(circle at 100% 0%, rgba(110, 231, 183, 0.16), transparent 55%);
+  }
+
+  /* CORNER BRACKETS */
+  .card-corner {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid rgba(110, 231, 183, 0.5);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 280ms ease;
+  }
+  .card-corner.tl { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+  .card-corner.tr { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
+  .card-corner.bl { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
+  .card-corner.br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+  .commit:hover .card-corner,
+  .commit.is-current .card-corner {
+    opacity: 1;
+  }
+
+  /* HEAD */
+  .commit-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.8rem;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px dashed rgba(187, 247, 208, 0.16);
+  }
+
+  .commit-sha {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    padding: 0.18rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(22, 30, 52, 0.65);
+    border: 1px solid rgba(110, 231, 183, 0.2);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: rgb(252 211 77);
+    letter-spacing: 0.06em;
+  }
+
+  .sha-glyph {
+    color: rgba(252, 211, 77, 0.55);
+    font-size: 0.78rem;
+  }
+
+  .branch-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.18rem 0.55rem 0.18rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(110, 231, 183, 0.1);
+    border: 1px solid rgba(110, 231, 183, 0.28);
+    color: var(--emerald-100);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .branch-tag.is-head {
+    background: linear-gradient(135deg, rgba(110, 231, 183, 0.28), rgba(52, 211, 153, 0.16));
+    border-color: rgba(110, 231, 183, 0.55);
+    color: var(--emerald-400);
+  }
+
+  .branch-arrow {
+    color: var(--emerald-400);
+    font-weight: 700;
+  }
+
+  .commit-spacer {
+    flex: 1;
+  }
+
+  .commit-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+
+  .meta-cell {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.32rem;
+  }
+
+  .meta-key {
+    color: rgba(110, 231, 183, 0.6);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 0.6rem;
+  }
+
+  .meta-val {
+    color: var(--emerald-100);
+    font-weight: 500;
+  }
+
+  .now-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.16rem 0.55rem;
+    border: 1px solid rgba(110, 231, 183, 0.5);
+    border-radius: 999px;
+    background: rgba(110, 231, 183, 0.12);
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .now-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--emerald-400);
+    box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.55);
+    animation: pulse-soft 2.4s ease-out infinite;
+  }
+
+  /* COMMIT MESSAGE — the editorial focal point */
+  .commit-message {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.45rem;
+    margin: 0 0 0.6rem;
+    font-size: 1.02rem;
+    line-height: 1.35;
+  }
+
+  .msg-prefix {
+    color: rgb(125 211 252);
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    font-weight: 700;
+  }
+
+  .msg-paren { color: rgba(187, 247, 208, 0.45); }
+  .msg-colon { color: rgba(187, 247, 208, 0.65); }
+
+  .msg-role {
+    color: var(--slate-300);
+    font-family: var(--display);
+    font-size: 1.15rem;
+    font-style: italic;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: -0.012em;
+  }
+
+  .msg-at {
+    color: rgba(187, 247, 208, 0.55);
+    font-family: var(--mono);
+  }
+
+  .msg-company {
+    color: var(--emerald-400);
+    font-family: var(--mono);
+    font-size: 0.94rem;
+    font-weight: 600;
+  }
+
+  .commit-body {
+    margin: 0 0 0.85rem;
+    color: rgba(187, 247, 208, 0.78);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    padding-left: 0.85rem;
+    border-left: 2px solid rgba(110, 231, 183, 0.22);
+    max-width: 68ch;
+  }
+
+  /* STATS PILLS */
+  .commit-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .stat-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.32rem;
+    padding: 0.22rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(22, 30, 52, 0.5);
+    border: 1px solid rgba(187, 247, 208, 0.1);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+  }
+
+  .stat-pill-key {
+    color: rgba(110, 231, 183, 0.55);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 0.58rem;
+  }
+
+  .stat-pill-val {
+    color: var(--emerald-100);
+    font-weight: 500;
+  }
+
+  .stat-pill-val.tag-emph {
+    color: rgb(196 181 253);
+    font-weight: 600;
+  }
+
+  .stat-pill.diff {
+    background: rgba(16, 185, 129, 0.06);
+    border-color: rgba(110, 231, 183, 0.22);
+  }
+
+  .diff-add {
+    color: var(--emerald-400);
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  .diff-key {
+    color: rgba(187, 247, 208, 0.5);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* DIFF (collapsible) */
+  .commit-diff {
+    margin-bottom: 0.85rem;
+    border: 1px solid rgba(187, 247, 208, 0.1);
+    border-radius: 6px;
+    background: rgba(22, 30, 52, 0.4);
+    overflow: hidden;
+  }
+
+  .commit-diff summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: rgba(187, 247, 208, 0.7);
+    transition: color 220ms ease;
+  }
+
+  .commit-diff summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .commit-diff summary:hover {
+    color: var(--emerald-400);
+  }
+
+  .diff-arrow {
+    color: var(--emerald-400);
+    font-size: 0.7rem;
+    transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .commit-diff[open] .diff-arrow {
+    transform: rotate(90deg);
+  }
+
+  .diff-summary-text {
+    color: rgb(252 211 77);
+  }
+
+  .diff-summary-hint {
+    color: rgba(187, 247, 208, 0.4);
+    font-size: 0.62rem;
+    font-style: italic;
+  }
+
+  .commit-diff[open] .diff-summary-hint {
+    display: none;
+  }
+
+  .diff-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0.5rem;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid rgba(187, 247, 208, 0.08);
+    background: rgba(16, 24, 44, 0.5);
+  }
+
+  .diff-line {
+    display: grid;
+    grid-template-columns: 2.2rem 1.2rem 1fr;
+    gap: 0;
+    padding: 0.32rem 0.75rem;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    line-height: 1.55;
+    transition: background-color 200ms ease;
+  }
+
+  .diff-line:hover {
+    background: rgba(110, 231, 183, 0.06);
+  }
+
+  .diff-num {
+    color: rgba(110, 231, 183, 0.4);
+    font-size: 0.66rem;
+    text-align: right;
+    padding-right: 0.55rem;
+    border-right: 1px solid rgba(187, 247, 208, 0.08);
+  }
+
+  .diff-plus {
+    color: var(--emerald-400);
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .diff-text {
+    color: var(--emerald-100);
+  }
+
+  /* FOOTER */
+  .commit-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed rgba(187, 247, 208, 0.12);
+  }
+
+  .logo-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0.25rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(187, 247, 208, 0.12);
+  }
+
+  .logo-chip img {
+    max-height: 18px;
+    width: auto;
+    object-fit: contain;
+    filter: saturate(0.9) brightness(1.05);
+  }
+
+  .signoff {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.32rem;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    color: rgba(187, 247, 208, 0.45);
+  }
+
+  .signoff-key {
+    color: rgba(110, 231, 183, 0.55);
+    letter-spacing: 0.08em;
+  }
+
+  .signoff-val {
+    color: rgba(187, 247, 208, 0.7);
+  }
+
+  /* ─────────────────────────  FOOTER  ───────────────────────── */
+  .git-footer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-top: 1.6rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px dashed rgba(187, 247, 208, 0.18);
+    border-radius: 999px;
+    background: rgba(28, 38, 70, 0.3);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+  }
+
+  .footer-hash {
+    color: var(--emerald-400);
+    font-size: 0.55rem;
+  }
+
+  .footer-text {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.45rem;
+  }
+
+  .footer-key {
+    color: rgb(252 211 77);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+  }
+
+  .footer-sep {
+    color: rgba(187, 247, 208, 0.4);
+  }
+
+  .footer-val {
+    color: rgba(187, 247, 208, 0.7);
+  }
+
+  /* ─────────────────────────  LIGHT MODE  ───────────────────────── */
+  :global(html:not(.dark)) .git-toolbar {
+    background:
+      linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.7));
+    border-color: rgba(15, 23, 42, 0.1);
+  }
+
+  :global(html:not(.dark)) .commit-card {
+    background: rgb(255 255 255);
+    border-color: rgba(15, 23, 42, 0.08);
+  }
+
+  :global(html:not(.dark)) .commit.is-current .commit-card {
+    background:
+      linear-gradient(180deg, rgb(255 255 255), rgba(236, 253, 245, 0.6));
+  }
+
+  :global(html:not(.dark)) .msg-role {
+    color: rgb(22 30 52);
+  }
+
+  :global(html:not(.dark)) .commit-body {
+    color: rgb(51 65 85);
+  }
+
+  :global(html:not(.dark)) .commit-sha {
+    background: rgb(254 252 232);
+    border-color: rgb(254 240 138);
+    color: rgb(133 77 14);
+  }
+
+  :global(html:not(.dark)) .logo-chip {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+  }
+
+  :global(html:not(.dark)) .commit-diff {
+    background: rgb(248 250 252);
+  }
+
+  :global(html:not(.dark)) .diff-list {
+    background: rgb(240 253 244);
+  }
+
+  :global(html:not(.dark)) .rail-dot-core {
+    background: rgb(255 255 255);
+  }
+
+  /* ─────────────────────────  RESPONSIVE  ───────────────────────── */
+  @media (max-width: 760px) {
+    .git-toolbar {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .commit {
+      grid-template-columns: 2.5rem minmax(0, 1fr);
+      gap: 0.3rem;
+    }
+
+    .rail-year,
+    .rail-year-from {
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+    }
+
+    .commit-message {
+      font-size: 0.95rem;
+    }
+
+    .msg-role {
+      font-size: 1rem;
+    }
+
+    .commit-meta {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+  }
+
+  @media (max-width: 540px) {
+    .commit-head {
+      gap: 0.35rem 0.5rem;
+    }
+
+    .commit-spacer {
+      display: none;
+    }
+
+    .stat-pill {
+      font-size: 0.62rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .commit,
+    .now-dot,
+    .chip-dot,
+    .prompt-caret,
+    .rail-dot-core {
+      animation: none !important;
+    }
+
+    .commit {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  const initializeExperience = () => {
+    const filters = document.querySelectorAll<HTMLButtonElement>('.git-filters .chip');
+    const commits = document.querySelectorAll<HTMLLIElement>('.git-log .commit');
+    if (!filters.length || !commits.length) return;
+
+    filters.forEach((chip) => {
+      if ((chip as any).dataset.bound === 'true') return;
+      (chip as any).dataset.bound = 'true';
+
+      chip.addEventListener('click', () => {
+        const filter = chip.dataset.filter || 'all';
+        filters.forEach((c) => c.classList.toggle('is-active', c === chip));
+
+        commits.forEach((commit) => {
+          const tag = commit.dataset.tag || '';
+          const isCurrent = commit.dataset.current === 'true';
+          let visible = true;
+          if (filter === 'current') visible = isCurrent;
+          else if (filter !== 'all') visible = tag === filter;
+          commit.classList.toggle('is-hidden', !visible);
+        });
+      });
+    });
+  };
+
+  document.addEventListener('astro:page-load', initializeExperience);
+  initializeExperience();
+</script>

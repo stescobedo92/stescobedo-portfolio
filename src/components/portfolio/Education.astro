@@ -1,0 +1,122 @@
+---
+import Section from './Section.astro';
+import { education } from '../../data/portfolio';
+---
+
+<Section title="Education" id="education">
+  <div class="timeline">
+    {education.map((item) => (
+      <article>
+        <div class="date">{item.range}</div>
+        <div class="marker" aria-hidden="true"></div>
+        <div class="content">
+          <h3>{item.credential}</h3>
+          <p class="school">{item.school}</p>
+          <p>{item.detail}</p>
+        </div>
+      </article>
+    ))}
+  </div>
+</Section>
+
+<style>
+  .timeline {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  article {
+    display: grid;
+    grid-template-columns: 150px 42px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .date {
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    text-align: right;
+  }
+
+  .marker {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    min-height: 100%;
+  }
+
+  .marker::before {
+    content: '';
+    width: 2px;
+    min-height: 100%;
+    background: linear-gradient(rgb(52 211 153), rgba(52, 211, 153, 0.08));
+  }
+
+  .marker::after {
+    content: '';
+    position: absolute;
+    top: 0.35rem;
+    width: 0.8rem;
+    height: 0.8rem;
+    border: 3px solid rgb(22 30 52);
+    border-radius: 999px;
+    background: rgb(52 211 153);
+  }
+
+  .content {
+    padding-left: 0.5rem;
+    color: rgb(203 213 225);
+  }
+
+  h3 {
+    margin: 0;
+    color: rgb(248 250 252);
+    font-size: 1.2rem;
+  }
+
+  .school {
+    margin: 0.25rem 0 0.75rem;
+    color: rgb(148 163 184);
+  }
+
+  p {
+    line-height: 1.7;
+  }
+
+  :global(html:not(.dark)) .content {
+    color: rgb(48 62 98);
+  }
+
+  :global(html:not(.dark)) h3 {
+    color: rgb(22 30 52);
+  }
+
+  :global(html:not(.dark)) .school {
+    color: rgb(71 85 105);
+  }
+
+  :global(html:not(.dark)) .marker::after {
+    border-color: white;
+  }
+
+  @media (max-width: 640px) {
+    article {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .date {
+      text-align: left;
+    }
+
+    .marker {
+      display: none;
+    }
+
+    .content {
+      border-left: 2px solid rgb(52 211 153);
+      padding-left: 1rem;
+    }
+  }
+</style>

@@ -1,0 +1,604 @@
+---
+import Section from './Section.astro';
+import Icon from './Icon.astro';
+import { profile } from '../../data/portfolio';
+
+// Pre-compute gutter line numbers (avoid Astro parser confusion with array+join in JSX)
+const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(2, '0')).join('\n');
+---
+
+<Section title="Correspondence" id="contact">
+  <p class="contact-eyebrow">
+    <span class="dash" aria-hidden="true"></span>
+    cd ~/inbox · open contact.ts
+    <span class="dash" aria-hidden="true"></span>
+  </p>
+
+  <div class="ide">
+    <div class="ide-bar">
+      <span class="ide-dot" style="background: #fb7185"></span>
+      <span class="ide-dot" style="background: #fbbf24"></span>
+      <span class="ide-dot" style="background: #34d399"></span>
+      <span class="ide-tab">
+        <span class="tab-icon">{`</>`}</span>
+        contact.ts
+        <span class="tab-modified" aria-hidden="true">●</span>
+      </span>
+      <span class="ide-meta">
+        <span class="meta-key">reply</span>
+        <span class="meta-arrow">→</span>
+        <span class="meta-val">within 48h</span>
+      </span>
+    </div>
+
+    <div class="ide-body">
+      <pre class="gutter" aria-hidden="true">{gutterLines}</pre>
+
+      <div class="code">
+        <p class="line">
+          <span class="comment">/**</span>
+        </p>
+        <p class="line">
+          <span class="comment">{` * Send a message — every dispatch lands directly in my inbox.`}</span>
+        </p>
+        <p class="line">
+          <span class="comment">{` * Reply window: 48h · From: ${profile.location}`}</span>
+        </p>
+        <p class="line">
+          <span class="comment">{` */`}</span>
+        </p>
+        <p class="line"></p>
+
+        <form id="contact-form" novalidate>
+          <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+          <p class="line">
+            <span class="kw">async function</span>
+            <span class="fn">contact</span><span class="punct">(</span><span class="param">message</span><span class="punct">)</span>
+            <span class="punct">{`{`}</span>
+          </p>
+
+          <div class="line indented">
+            <span class="kw">const</span>
+            <span class="var">name</span>
+            <span class="op">=</span>
+            <label class="field">
+              <span class="quote">"</span>
+              <input name="name" type="text" autocomplete="name" placeholder="John Doe" required />
+              <span class="quote">"</span>
+              <span class="punct">;</span>
+              <span class="error" data-error-for="name"></span>
+            </label>
+          </div>
+
+          <div class="line indented">
+            <span class="kw">const</span>
+            <span class="var">email</span>
+            <span class="op">=</span>
+            <label class="field">
+              <span class="quote">"</span>
+              <input name="email" type="email" autocomplete="email" placeholder="johndoe@example.com" required />
+              <span class="quote">"</span>
+              <span class="punct">;</span>
+              <span class="error" data-error-for="email"></span>
+            </label>
+          </div>
+
+          <div class="line indented">
+            <span class="kw">const</span>
+            <span class="var">subject</span>
+            <span class="op">=</span>
+            <label class="field">
+              <span class="quote">"</span>
+              <input name="subject" type="text" placeholder="A new project, a question, an idea…" required />
+              <span class="quote">"</span>
+              <span class="punct">;</span>
+              <span class="error" data-error-for="subject"></span>
+            </label>
+          </div>
+
+          <div class="line indented">
+            <span class="kw">const</span>
+            <span class="var">body</span>
+            <span class="op">=</span>
+            <span class="punct">`</span>
+          </div>
+          <div class="line indented-2 textarea-wrap">
+            <label class="field block">
+              <textarea name="message" rows="4" placeholder="Tell me what you're trying to build, the constraints, the deadline." required minlength="10"></textarea>
+              <span class="error" data-error-for="message"></span>
+            </label>
+          </div>
+          <div class="line indented">
+            <span class="punct">`</span><span class="punct">;</span>
+          </div>
+
+          <p class="line"></p>
+
+          <p class="line indented">
+            <span class="kw">return</span>
+            <span class="fn-call">deliver</span><span class="punct">(</span><span class="punct">{`{`}</span>
+            <span class="prop-pair"><span class="var">name</span><span class="punct">,</span></span>
+            <span class="prop-pair"><span class="var">email</span><span class="punct">,</span></span>
+            <span class="prop-pair"><span class="var">subject</span><span class="punct">,</span></span>
+            <span class="prop-pair"><span class="var">body</span></span>
+            <span class="punct">{`}`}</span><span class="punct">)</span><span class="punct">;</span>
+          </p>
+
+          <p class="line">
+            <span class="punct">{`}`}</span>
+          </p>
+
+          <p class="line"></p>
+
+          <div class="line">
+            <button type="submit">
+              <Icon name="send" class="h-4 w-4" />
+              <span>contact.run()</span>
+            </button>
+            <p id="form-status" aria-live="polite"></p>
+          </div>
+
+          <p class="line"></p>
+
+          <p class="line">
+            <span class="comment">{`// or write directly:`}</span>
+            <a class="email-inline" href={`mailto:${profile.email}`}>
+              <span class="quote">"</span>{profile.email}<span class="quote">"</span>
+            </a>
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <div class="ide-statusbar">
+      <span class="sb-cell">
+        <span class="sb-dot" aria-hidden="true"></span>
+        TypeScript
+      </span>
+      <span class="sb-sep" aria-hidden="true"></span>
+      <span class="sb-cell">UTF-8</span>
+      <span class="sb-sep" aria-hidden="true"></span>
+      <span class="sb-cell">Ln 14, Col 18</span>
+      <span class="sb-spacer" aria-hidden="true"></span>
+      <span class="sb-cell"><span class="sb-key">git</span> main</span>
+      <span class="sb-sep" aria-hidden="true"></span>
+      <span class="sb-cell">© @{profile.githubUsername}</span>
+    </div>
+  </div>
+</Section>
+
+<script>
+  const initializeContactForm = () => {
+    const form = document.getElementById('contact-form') as HTMLFormElement | null;
+    const status = document.getElementById('form-status');
+    if (!form || !status || form.dataset.ready === 'true') return;
+    form.dataset.ready = 'true';
+
+    const setError = (name: string, message = '') => {
+      const error = form.querySelector(`[data-error-for="${name}"]`);
+      if (error) error.textContent = message;
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const name = String(data.get('name') || '').trim();
+      const email = String(data.get('email') || '').trim();
+      const subject = String(data.get('subject') || '').trim();
+      const message = String(data.get('message') || '').trim();
+
+      ['name', 'email', 'subject', 'message'].forEach((field) => setError(field));
+      status.textContent = '';
+      status.className = '';
+
+      let invalid = false;
+      if (!name) {
+        setError('name', '// Required');
+        invalid = true;
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setError('email', '// Invalid email');
+        invalid = true;
+      }
+      if (!subject) {
+        setError('subject', '// Required');
+        invalid = true;
+      }
+      if (message.length < 10) {
+        setError('message', '// At least 10 characters');
+        invalid = true;
+      }
+      if (invalid) return;
+
+      const mailto = new URL('mailto:stescobedo.31@gmail.com');
+      mailto.searchParams.set('subject', `Portfolio dispatch: ${subject}`);
+      mailto.searchParams.set('body', `From: ${name}\nEmail: ${email}\nSubject: ${subject}\n\n${message}`);
+      status.textContent = '// dispatch ready · opening client…';
+      status.className = 'success';
+      window.location.href = mailto.toString();
+      form.reset();
+    });
+  };
+
+  document.addEventListener('astro:page-load', initializeContactForm);
+  initializeContactForm();
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&display=swap');
+
+  .contact-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: -1rem 0 2rem;
+    color: rgb(110 231 183);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .contact-eyebrow .dash {
+    width: 36px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* IDE FRAME */
+  .ide {
+    border: 1px solid rgba(187, 247, 208, 0.16);
+    border-radius: 12px;
+    overflow: hidden;
+    background:
+      linear-gradient(160deg, rgba(34, 46, 78, 0.5), rgba(22, 30, 52, 0.85));
+    box-shadow: 0 30px 80px rgba(4, 12, 32, 0.4);
+    backdrop-filter: blur(8px);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .ide-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(187, 247, 208, 0.1);
+  }
+
+  .ide-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+
+  .ide-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 0.85rem;
+    padding: 0.3rem 0.85rem;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    background: rgba(110, 231, 183, 0.08);
+    border: 1px solid rgba(110, 231, 183, 0.18);
+    border-bottom: 0;
+    color: rgb(187 247 208);
+    font-size: 0.78rem;
+  }
+
+  .tab-icon {
+    color: rgb(110 231 183);
+    font-weight: 700;
+  }
+
+  .tab-modified {
+    color: rgb(110 231 183);
+    font-size: 0.6rem;
+  }
+
+  .ide-meta {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: rgba(187, 247, 208, 0.65);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+  }
+
+  .meta-key {
+    color: rgba(110, 231, 183, 0.7);
+    text-transform: uppercase;
+  }
+
+  .meta-arrow {
+    color: rgba(110, 231, 183, 0.5);
+  }
+
+  .meta-val {
+    color: rgb(187 247 208);
+  }
+
+  /* IDE BODY */
+  .ide-body {
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: 0;
+    font-size: 0.92rem;
+    line-height: 1.85;
+  }
+
+  .gutter {
+    margin: 0;
+    padding: 1.2rem 0.6rem;
+    color: rgba(110, 231, 183, 0.32);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    text-align: right;
+    border-right: 1px solid rgba(187, 247, 208, 0.08);
+    user-select: none;
+    line-height: 1.85;
+  }
+
+  .code {
+    padding: 1.2rem 1.4rem;
+  }
+
+  .line {
+    margin: 0;
+    color: rgb(187 247 208);
+    min-height: 1.85em;
+  }
+
+  .indented {
+    padding-left: 1.5rem;
+  }
+
+  .indented-2 {
+    padding-left: 3rem;
+  }
+
+  /* SYNTAX TOKENS */
+  .kw {
+    color: rgb(110 231 183);
+    font-weight: 600;
+  }
+
+  .var {
+    color: rgb(167 243 208);
+  }
+
+  .fn,
+  .fn-call {
+    color: rgb(248 250 252);
+  }
+
+  .param {
+    color: rgba(187, 247, 208, 0.85);
+    font-style: italic;
+  }
+
+  .punct {
+    color: rgba(187, 247, 208, 0.7);
+  }
+
+  .op {
+    color: rgba(110, 231, 183, 0.85);
+  }
+
+  .quote {
+    color: rgba(110, 231, 183, 0.85);
+  }
+
+  .comment {
+    color: rgba(187, 247, 208, 0.45);
+    font-style: italic;
+  }
+
+  .prop-pair {
+    margin-right: 0.5rem;
+  }
+
+  /* FIELDS — input rendered as string literal */
+  .field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.05rem;
+  }
+
+  .field.block {
+    display: block;
+    width: 100%;
+  }
+
+  input[name='_gotcha'] {
+    display: none;
+  }
+
+  input[type='text'],
+  input[type='email'],
+  textarea {
+    flex: 1;
+    min-width: 12rem;
+    border: 0;
+    background: transparent;
+    color: rgb(167 243 208);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    padding: 0.05rem 0.2rem;
+    border-bottom: 1px dashed rgba(187, 247, 208, 0.18);
+    transition: border-bottom-color 200ms ease;
+  }
+
+  textarea {
+    width: 100%;
+    min-width: 0;
+    resize: vertical;
+    min-height: 4.5rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px dashed rgba(187, 247, 208, 0.18);
+    border-radius: 4px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgba(187, 247, 208, 0.3);
+    font-style: italic;
+  }
+
+  input:focus,
+  textarea:focus {
+    outline: none;
+    border-bottom-color: rgb(110 231 183);
+    color: rgb(248 250 252);
+  }
+
+  textarea:focus {
+    border-color: rgb(110 231 183);
+  }
+
+  .error {
+    margin-left: 0.6rem;
+    color: rgb(252 165 165);
+    font-style: italic;
+    font-size: 0.82rem;
+  }
+
+  /* BUTTON */
+  button[type='submit'] {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid rgb(110 231 183);
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgb(110 231 183), rgb(52 211 153));
+    color: rgb(13 26 58);
+    cursor: pointer;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.55rem 1.1rem;
+    transition: transform 200ms ease, box-shadow 200ms ease;
+    box-shadow: 0 6px 20px rgba(52, 211, 153, 0.28);
+  }
+
+  button[type='submit']:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(52, 211, 153, 0.42);
+  }
+
+  button[type='submit'][disabled] {
+    cursor: wait;
+    opacity: 0.6;
+    transform: none;
+  }
+
+  #form-status {
+    display: inline-block;
+    margin: 0 0 0 0.85rem;
+    color: rgba(187, 247, 208, 0.65);
+    font-size: 0.82rem;
+    font-style: italic;
+  }
+
+  #form-status.success {
+    color: rgb(110 231 183);
+  }
+
+  /* INLINE EMAIL LINK */
+  .email-inline {
+    color: rgb(110 231 183);
+    text-decoration: none;
+    transition: color 200ms ease;
+    margin-left: 0.4rem;
+  }
+
+  .email-inline:hover {
+    color: rgb(167 243 208);
+  }
+
+  /* IDE STATUSBAR */
+  .ide-statusbar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.95rem;
+    background: rgba(110, 231, 183, 0.08);
+    border-top: 1px solid rgba(187, 247, 208, 0.08);
+    color: rgb(187 247 208);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+
+  .sb-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .sb-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(110 231 183);
+    box-shadow: 0 0 6px rgba(110, 231, 183, 0.6);
+  }
+
+  .sb-key {
+    color: rgba(110, 231, 183, 0.7);
+    text-transform: uppercase;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+  }
+
+  .sb-sep {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(187, 247, 208, 0.2);
+  }
+
+  .sb-spacer {
+    flex: 1;
+  }
+
+  /* LIGHT MODE */
+  :global(html:not(.dark)) .ide {
+    background: rgb(248 250 252);
+    border-color: rgba(15, 23, 42, 0.08);
+  }
+
+  :global(html:not(.dark)) .line,
+  :global(html:not(.dark)) input,
+  :global(html:not(.dark)) textarea {
+    color: rgb(22 30 52);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 760px) {
+    .ide-body {
+      grid-template-columns: 2.4rem 1fr;
+      font-size: 0.84rem;
+    }
+    .gutter {
+      padding: 1rem 0.45rem;
+      font-size: 0.7rem;
+    }
+    .code {
+      padding: 1rem;
+    }
+    .indented { padding-left: 0.9rem; }
+    .indented-2 { padding-left: 1.7rem; }
+    .ide-meta {
+      display: none;
+    }
+    input[type='text'],
+    input[type='email'] {
+      min-width: 8rem;
+    }
+  }
+</style>
