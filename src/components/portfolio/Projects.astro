@@ -218,7 +218,7 @@ const otherViews = otherProjects.map((project, index) => {
     <!-- Command header — replaces the traffic-light chrome -->
     <header class="ws-header" aria-hidden="true">
       <div class="ws-prompt">
-        <span class="ws-glyph">⌗</span>
+        <span class="ws-cmd-glyph">⌗</span>
         <span class="ws-cmd">
           <span class="ws-cmd-bin">cargo</span>
           <span class="ws-cmd-sub">workspace</span>
@@ -860,7 +860,7 @@ const otherViews = otherProjects.map((project, index) => {
     gap: 0.42rem;
   }
 
-  .ws-glyph {
+  .ws-cmd-glyph {
     color: var(--emerald-400);
     font-size: 1rem;
   }
@@ -2027,7 +2027,7 @@ const otherViews = otherProjects.map((project, index) => {
       repeating-linear-gradient(90deg, transparent 0 18px, rgba(15, 23, 42, 0.04) 18px 19px);
     border-bottom-color: rgb(226 232 240);
   }
-  :global(html:not(.dark)) .ws-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .ws-cmd-glyph { color: rgb(5 150 105); }
   :global(html:not(.dark)) .ws-cmd-bin { color: rgb(15 23 42); }
   :global(html:not(.dark)) .ws-cmd-sub { color: rgb(124 58 237); }
   :global(html:not(.dark)) .ws-cmd-flag { color: rgb(180 83 9); }
@@ -2223,10 +2223,6 @@ const otherViews = otherProjects.map((project, index) => {
   :global(html:not(.dark)) .bc-seg { color: rgb(71 85 105); }
   :global(html:not(.dark)) .bc-sep { color: rgb(148 163 184); }
   :global(html:not(.dark)) .bc-action { color: rgb(5 150 105); }
-
-  /* tab glyphs / dots */
-  :global(html:not(.dark)) .tab-close { color: rgb(148 163 184); }
-  :global(html:not(.dark)) .tab-dot { background: rgb(203 213 225); }
 
   /* statusbar — stays language-tinted (intentional) */
   :global(html:not(.dark)) .statusbar { color: rgb(15 23 42); }
