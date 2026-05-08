@@ -1,7 +1,7 @@
 ---
 import TypedText from './TypedText.astro';
 import Icon from './Icon.astro';
-import { profile } from '../../data/portfolio';
+import { profile, primarySkills } from '../../data/portfolio';
 
 const rawBase = import.meta.env.BASE_URL || '/';
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
@@ -17,15 +17,33 @@ const iconByNetwork = {
   StackOverflow: 'stackoverflow',
   X: 'x',
 } as const;
+
+// Stack matrix: 14 columns × 10 rows = 140 cells. JS picks random cells to
+// materialize a skill icon from skillicons.dev for ~3 seconds.
+const MATRIX_COLS = 14;
+const MATRIX_ROWS = 10;
+const matrixCells = Array.from({ length: MATRIX_COLS * MATRIX_ROWS }, (_, i) => i);
+const skillIcons = primarySkills.map((s) => s.icon);
 ---
 
 <section class="hero" aria-label="Intro" id="hero">
   <a id="about" class="anchor-alias" aria-hidden="true"></a>
-  <!-- Animated grid background -->
+  <!-- Animated grid background + live stack matrix -->
   <div class="hero-bg" aria-hidden="true">
     <div class="grid"></div>
     <div class="aurora aurora-1"></div>
     <div class="aurora aurora-2"></div>
+    <div
+      class="skill-matrix"
+      id="skill-matrix"
+      data-cols={MATRIX_COLS}
+      data-rows={MATRIX_ROWS}
+      data-skills={skillIcons.join(',')}
+    >
+      {matrixCells.map((i) => (
+        <span class="skill-cell" data-cell-index={i}></span>
+      ))}
+    </div>
     <div class="cursor-glow" id="cursor-glow"></div>
   </div>
 
@@ -122,7 +140,7 @@ const iconByNetwork = {
     </div>
 
     <!-- RIGHT: portrait card -->
-    <aside class="portrait-card" aria-label="Portrait">
+    <aside class="portrait-card" aria-label="Portrait" id="portrait-card">
       <span class="portrait-prop" aria-hidden="true">portrait:</span>
 
       <figure class="portrait-frame">
@@ -144,14 +162,22 @@ const iconByNetwork = {
           </ul>
         </div>
 
-        <img
-          src={profile.image}
-          alt={profile.name}
-          width="420"
-          height="420"
-          loading="eager"
-          data-github-avatar
-        />
+        <div class="portrait-photo">
+          <img
+            src={profile.image}
+            alt={profile.name}
+            width="420"
+            height="420"
+            loading="eager"
+            data-github-avatar
+          />
+          <span class="portrait-scanline" aria-hidden="true"></span>
+          <span class="portrait-rec" aria-hidden="true">
+            <span class="rec-dot"></span>
+            <span class="rec-text">REC</span>
+          </span>
+          <span class="portrait-grid-overlay" aria-hidden="true"></span>
+        </div>
 
         <figcaption class="portrait-caption">
           <span class="cap-line">
@@ -199,21 +225,111 @@ const iconByNetwork = {
     if (!hero || (hero as any).dataset.ready === 'true') return;
     (hero as any).dataset.ready = 'true';
 
-    // Mouse-tracked cursor glow
+    // Mouse-tracked cursor glow + 3D parallax tilt on the portrait card
     const glow = document.getElementById('cursor-glow');
-    if (glow) {
-      const onMove = (e: MouseEvent) => {
-        const rect = hero.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+    const portraitCard = document.getElementById('portrait-card');
+    const onMove = (e: MouseEvent) => {
+      const rect = hero.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (glow) {
         glow.style.transform = `translate(${x - 200}px, ${y - 200}px)`;
         glow.style.opacity = '1';
+      }
+      if (portraitCard) {
+        const nx = (x / rect.width - 0.5) * 2;  // -1..1
+        const ny = (y / rect.height - 0.5) * 2; // -1..1
+        portraitCard.style.setProperty('--tilt-y', `${nx * 6}deg`);
+        portraitCard.style.setProperty('--tilt-x', `${-ny * 5}deg`);
+        portraitCard.style.setProperty('--shift-x', `${nx * 4}px`);
+        portraitCard.style.setProperty('--shift-y', `${-ny * 4}px`);
+      }
+    };
+    const onLeave = () => {
+      if (glow) glow.style.opacity = '0';
+      if (portraitCard) {
+        portraitCard.style.setProperty('--tilt-x', '0deg');
+        portraitCard.style.setProperty('--tilt-y', '0deg');
+        portraitCard.style.setProperty('--shift-x', '0px');
+        portraitCard.style.setProperty('--shift-y', '0px');
+      }
+    };
+    hero.addEventListener('mousemove', onMove);
+    hero.addEventListener('mouseleave', onLeave);
+
+    // ── Stack matrix: random skill icons materialize and dissolve ──
+    const matrix = document.getElementById('skill-matrix');
+    if (matrix && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const skills = (matrix.dataset.skills || '').split(',').filter(Boolean);
+      const cells = Array.from(matrix.querySelectorAll<HTMLElement>('.skill-cell'));
+      const html = document.documentElement;
+      const isDark = () => html.classList.contains('dark');
+      const iconUrl = (name: string, dark: boolean) =>
+        `https://skillicons.dev/icons?i=${name}&theme=${dark ? 'dark' : 'light'}`;
+
+      type Active = { skill: string; img: HTMLImageElement };
+      const active = new Map<HTMLElement, Active>();
+      const MAX_ACTIVE = 5;
+      const HOLD_MIN = 2200;
+      const HOLD_MAX = 4200;
+      const FADE_OUT = 700;
+
+      // Pre-warm the cache by hitting each icon URL once for the current theme
+      const preload = (dark: boolean) => {
+        skills.forEach((s) => {
+          const img = new Image();
+          img.src = iconUrl(s, dark);
+        });
       };
-      const onLeave = () => {
-        glow.style.opacity = '0';
+      preload(isDark());
+
+      const releaseCell = (cell: HTMLElement) => {
+        const entry = active.get(cell);
+        if (!entry) return;
+        cell.classList.remove('is-active');
+        window.setTimeout(() => {
+          entry.img.remove();
+          active.delete(cell);
+        }, FADE_OUT);
       };
-      hero.addEventListener('mousemove', onMove);
-      hero.addEventListener('mouseleave', onLeave);
+
+      const activateRandom = () => {
+        if (active.size >= MAX_ACTIVE) return;
+        const free = cells.filter((c) => !active.has(c));
+        if (free.length === 0 || skills.length === 0) return;
+        const cell = free[Math.floor(Math.random() * free.length)];
+        const skill = skills[Math.floor(Math.random() * skills.length)];
+        const img = document.createElement('img');
+        img.src = iconUrl(skill, isDark());
+        img.alt = '';
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.dataset.skill = skill;
+        cell.appendChild(img);
+        // Force reflow then add the active class for the fade-in to play
+        void cell.offsetWidth;
+        cell.classList.add('is-active');
+        active.set(cell, { skill, img });
+        const hold = HOLD_MIN + Math.random() * (HOLD_MAX - HOLD_MIN);
+        window.setTimeout(() => releaseCell(cell), hold);
+      };
+
+      // Cadence: a new icon every 320–620ms
+      let timer: number;
+      const schedule = () => {
+        activateRandom();
+        timer = window.setTimeout(schedule, 320 + Math.random() * 300);
+      };
+      schedule();
+
+      // Re-fetch active icons when the theme toggles
+      const themeObserver = new MutationObserver(() => {
+        const dark = isDark();
+        active.forEach(({ img, skill }) => {
+          img.src = iconUrl(skill, dark);
+        });
+      });
+      themeObserver.observe(html, { attributes: true, attributeFilter: ['class'] });
     }
 
     // Live time clock
@@ -373,6 +489,16 @@ const iconByNetwork = {
     font-size: 0.92rem;
   }
 
+  /* 3D tilt is driven by JS via custom properties — see initializeHero() */
+  .portrait-card {
+    --tilt-x: 0deg;
+    --tilt-y: 0deg;
+    --shift-x: 0px;
+    --shift-y: 0px;
+    perspective: 900px;
+    perspective-origin: 50% 30%;
+  }
+
   .portrait-frame {
     position: relative;
     width: 100%;
@@ -381,12 +507,18 @@ const iconByNetwork = {
     border: 1px solid rgba(187, 247, 208, 0.18);
     background: rgba(34, 46, 78, 0.7);
     backdrop-filter: blur(10px);
-    transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 280ms ease;
+    transform:
+      rotateX(var(--tilt-x))
+      rotateY(var(--tilt-y))
+      translate3d(var(--shift-x), var(--shift-y), 0);
+    transform-style: preserve-3d;
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 280ms ease, box-shadow 320ms ease;
+    box-shadow: 0 18px 48px rgba(4, 12, 32, 0.4);
   }
 
   .portrait-frame:hover {
-    transform: translateY(-4px);
-    border-color: rgba(110, 231, 183, 0.4);
+    border-color: rgba(110, 231, 183, 0.55);
+    box-shadow: 0 32px 80px rgba(4, 12, 32, 0.55);
   }
 
   .portrait-corner {
@@ -450,17 +582,127 @@ const iconByNetwork = {
     outline: none;
   }
 
-  .portrait-frame > img {
+  /* PORTRAIT PHOTO + CRT-STYLE OVERLAYS */
+  .portrait-photo {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .portrait-photo img {
     display: block;
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
-    filter: saturate(0.75) contrast(1.05);
-    transition: filter 320ms ease;
+    filter: saturate(0.78) contrast(1.05);
+    transition: filter 320ms ease, transform 480ms ease;
+    will-change: filter;
   }
 
-  .portrait-frame:hover > img {
+  .portrait-frame:hover .portrait-photo img {
     filter: saturate(1) contrast(1);
+    transform: scale(1.015);
+  }
+
+  /* horizontal scan-line that drifts down the photo */
+  .portrait-scanline {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background:
+      linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(110, 231, 183, 0.28) 48%,
+        rgba(167, 243, 208, 0.6) 50%,
+        rgba(110, 231, 183, 0.28) 52%,
+        transparent 100%
+      );
+    background-size: 100% 18%;
+    background-repeat: no-repeat;
+    background-position: 0% -20%;
+    mix-blend-mode: screen;
+    animation: scanline-sweep 4.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    opacity: 0.6;
+  }
+
+  @keyframes scanline-sweep {
+    0%   { background-position: 0% -20%;  opacity: 0; }
+    8%   { opacity: 0.65; }
+    50%  { background-position: 0% 110%;  opacity: 0.55; }
+    52%  { opacity: 0; }
+    100% { background-position: 0% 110%;  opacity: 0; }
+  }
+
+  /* faint scanline texture (always on) */
+  .portrait-photo::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(13, 22, 42, 0.0) 0px,
+        rgba(13, 22, 42, 0.0) 2px,
+        rgba(13, 22, 42, 0.18) 3px,
+        rgba(13, 22, 42, 0.0) 4px
+      );
+    mix-blend-mode: multiply;
+    opacity: 0.35;
+  }
+
+  /* live REC indicator */
+  .portrait-rec {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    padding: 0.18rem 0.45rem;
+    border: 1px solid rgba(252, 165, 165, 0.65);
+    border-radius: 999px;
+    background: rgba(13, 22, 42, 0.78);
+    backdrop-filter: blur(4px);
+    color: rgb(252 165 165);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .rec-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(248 113 113);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.6);
+    animation: rec-pulse 1.6s ease-out infinite;
+  }
+
+  @keyframes rec-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); }
+    70%  { box-shadow: 0 0 0 7px rgba(248, 113, 113, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
+  }
+
+  /* very faint grid overlay on the photo (cell hint) */
+  .portrait-grid-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background-image:
+      linear-gradient(rgba(110, 231, 183, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(110, 231, 183, 0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+    mix-blend-mode: screen;
+    opacity: 0.55;
   }
 
   .portrait-caption {
@@ -564,6 +806,81 @@ const iconByNetwork = {
     opacity: 0;
     transition: opacity 320ms ease, transform 80ms linear;
     will-change: transform, opacity;
+  }
+
+  /* ─────────  STACK MATRIX (live skill icons)  ───────── */
+  .skill-matrix {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    pointer-events: none;
+    /* Mask the matrix to fade it where the foreground content lives:
+       the title block (top-left) and the portrait card (top-right). */
+    -webkit-mask-image:
+      radial-gradient(ellipse 65% 55% at 30% 35%, transparent 0%, transparent 35%, black 70%),
+      radial-gradient(ellipse 32% 50% at 88% 38%, transparent 0%, transparent 55%, black 90%);
+            mask-image:
+      radial-gradient(ellipse 65% 55% at 30% 35%, transparent 0%, transparent 35%, black 70%),
+      radial-gradient(ellipse 32% 50% at 88% 38%, transparent 0%, transparent 55%, black 90%);
+    -webkit-mask-composite: source-in;
+            mask-composite: intersect;
+  }
+
+  .skill-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Subtle dotted intersection so empty cells still feel like a grid */
+  }
+
+  .skill-cell::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(110, 231, 183, 0.14);
+    transform: translate(50%, -50%);
+  }
+
+  .skill-cell img {
+    width: 64%;
+    aspect-ratio: 1;
+    height: auto;
+    opacity: 0;
+    transform: scale(0.4) rotate(-8deg);
+    filter: drop-shadow(0 6px 18px rgba(110, 231, 183, 0.28));
+    transition:
+      opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      filter 700ms ease;
+  }
+
+  .skill-cell.is-active img {
+    opacity: 0.78;
+    transform: scale(1) rotate(0deg);
+  }
+
+  /* a soft halo behind each active icon */
+  .skill-cell.is-active::after {
+    content: '';
+    position: absolute;
+    inset: 18%;
+    border-radius: 12px;
+    background: radial-gradient(circle, rgba(110, 231, 183, 0.18), transparent 70%);
+    animation: cell-halo 3.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes cell-halo {
+    0%, 100% { opacity: 0.5; transform: scale(0.95); }
+    50%      { opacity: 0.9; transform: scale(1.1); }
   }
 
   /* COPY */
@@ -1098,6 +1415,47 @@ const iconByNetwork = {
   }
   :global(html:not(.dark)) .cursor-glow {
     background: radial-gradient(circle, rgba(16, 185, 129, 0.16), transparent 65%);
+  }
+
+  /* skill matrix in light mode */
+  :global(html:not(.dark)) .skill-cell::before {
+    background: rgba(15, 23, 42, 0.18);
+  }
+  :global(html:not(.dark)) .skill-cell img {
+    filter: drop-shadow(0 6px 14px rgba(15, 23, 42, 0.18));
+  }
+  :global(html:not(.dark)) .skill-cell.is-active img {
+    opacity: 0.92;
+  }
+  :global(html:not(.dark)) .skill-cell.is-active::after {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.18), transparent 70%);
+  }
+
+  /* portrait overlays in light mode (less aggressive blending) */
+  :global(html:not(.dark)) .portrait-photo::before {
+    opacity: 0.18;
+  }
+  :global(html:not(.dark)) .portrait-grid-overlay {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+    mix-blend-mode: multiply;
+    opacity: 0.5;
+  }
+  :global(html:not(.dark)) .portrait-rec {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(190, 18, 60, 0.4);
+    color: rgb(190 18 60);
+  }
+  :global(html:not(.dark)) .rec-dot {
+    background: rgb(220 38 38);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55);
+  }
+  :global(html:not(.dark)) .portrait-frame {
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.1);
+  }
+  :global(html:not(.dark)) .portrait-frame:hover {
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
   }
 
   /* RESPONSIVE */
