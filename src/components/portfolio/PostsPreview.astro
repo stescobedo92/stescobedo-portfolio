@@ -404,14 +404,73 @@ const filenameOf = (slug: string) => `${slug}.mdx`;
     transform: translateX(4px);
   }
 
-  /* LIGHT MODE */
+  /* ═══════════════════════  LIGHT MODE  ═══════════════════════ */
+  :global(html:not(.dark)) .posts-eyebrow,
+  :global(html:not(.dark)) .posts-eyebrow .dash {
+    color: rgb(5 150 105);
+  }
+
   :global(html:not(.dark)) .terminal {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.06);
+  }
+
+  :global(html:not(.dark)) .term-bar {
     background: rgb(248 250 252);
-    border-color: rgba(15, 23, 42, 0.08);
+    border-bottom-color: rgb(226 232 240);
+  }
+
+  :global(html:not(.dark)) .term-title {
+    color: rgb(71 85 105);
+  }
+
+  :global(html:not(.dark)) .term-tab {
+    color: rgb(15 118 110);
+    border-color: rgb(167 243 208);
+  }
+
+  :global(html:not(.dark)) .term-tab:hover {
+    color: rgb(5 150 105);
+    border-color: rgb(5 150 105);
+    background: rgba(16, 185, 129, 0.06);
   }
 
   :global(html:not(.dark)) .term-body {
-    color: rgb(22 30 52);
+    color: rgb(15 23 42);
+  }
+
+  /* prompt tokens */
+  :global(html:not(.dark)) .prompt .user { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .prompt .host { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .prompt .path { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .prompt .dollar { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .prompt .cmd { color: rgb(124 58 237); }
+  :global(html:not(.dark)) .prompt .flag { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .totals { color: rgb(100 116 139); }
+
+  /* ls -la columns */
+  :global(html:not(.dark)) .perm { color: rgb(100 116 139); }
+  :global(html:not(.dark)) .entry .num { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .owner { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .size { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .date,
+  :global(html:not(.dark)) .d-mon,
+  :global(html:not(.dark)) .d-day,
+  :global(html:not(.dark)) .d-year { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .filename { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .file-tag { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .comment-mark { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .entry-title { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .entry-link:hover .entry-title { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .cursor { background: rgb(5 150 105); }
+
+  /* footer link */
+  :global(html:not(.dark)) .posts-archive {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .posts-archive:hover {
+    color: rgb(15 118 110);
   }
 
   /* RESPONSIVE */

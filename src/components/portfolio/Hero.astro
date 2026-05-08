@@ -920,26 +920,179 @@ const iconByNetwork = {
     50% { opacity: 1; }
   }
 
-  /* LIGHT MODE */
-  :global(html:not(.dark)) .name-row {
-    color: rgb(22 30 52);
+  /* ═══════════════════════  LIGHT MODE  ═══════════════════════ */
+  /* greeting / code-line tokens */
+  :global(html:not(.dark)) .greeting {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .greeting > span:nth-child(2) {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .greet-symbol {
+    color: rgb(5 150 105);
   }
 
+  /* display name + motto */
+  :global(html:not(.dark)) .name-row,
+  :global(html:not(.dark)) .name-text {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .name-period {
+    color: rgb(5 150 105);
+  }
   :global(html:not(.dark)) .motto {
-    color: rgb(22 30 52);
+    color: rgb(15 23 42);
   }
-
   :global(html:not(.dark)) .summary {
-    color: rgb(48 62 98);
+    color: rgb(51 65 85);
   }
 
+  /* props (code-object body) */
+  :global(html:not(.dark)) .prop-key {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .prop-val {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .prop-val.str {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .prop-val.num {
+    color: rgb(180 83 9);
+  }
+  :global(html:not(.dark)) .prop-op {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .prop-comma {
+    color: rgb(148 163 184);
+  }
+  :global(html:not(.dark)) .prop-comment {
+    color: rgb(100 116 139);
+  }
+  :global(html:not(.dark)) .closing-bracket {
+    color: rgb(5 150 105);
+  }
+
+  /* status bar */
   :global(html:not(.dark)) .status-bar {
-    background: rgba(255, 255, 255, 0.6);
-    border-color: rgba(15, 23, 42, 0.1);
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgb(226 232 240);
+    color: rgb(51 65 85);
+  }
+  :global(html:not(.dark)) .status-val {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .status-key {
+    color: rgb(100 116 139);
+  }
+  :global(html:not(.dark)) .status-dot,
+  :global(html:not(.dark)) .status-dot.live {
+    background: rgb(16 185 129);
+  }
+  :global(html:not(.dark)) .status-sep {
+    background: rgb(203 213 225);
   }
 
-  :global(html:not(.dark)) .status-val {
-    color: rgb(22 30 52);
+  /* CTAs in light mode */
+  :global(html:not(.dark)) .cta.primary {
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+    color: rgb(255 255 255);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
+  }
+  :global(html:not(.dark)) .cta.primary:hover {
+    box-shadow: 0 14px 36px rgba(16, 185, 129, 0.35);
+  }
+  :global(html:not(.dark)) .cta.secondary {
+    border-color: rgb(5 150 105);
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .cta.secondary:hover {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .cta.ghost {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .cta.ghost:hover {
+    color: rgb(5 150 105);
+  }
+
+  /* portrait card */
+  :global(html:not(.dark)) .portrait-prop {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .portrait-frame {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  }
+  :global(html:not(.dark)) .portrait-frame:hover {
+    border-color: rgb(16 185 129);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+  }
+  :global(html:not(.dark)) .portrait-corner {
+    border-color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .portrait-tag {
+    background: rgb(248 250 252);
+    color: rgb(5 150 105);
+    border: 1px solid rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .portrait-socials {
+    background: rgb(248 250 252);
+    border: 1px solid rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .portrait-socials a {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .portrait-socials a:hover,
+  :global(html:not(.dark)) .portrait-socials a:focus-visible {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .portrait-caption {
+    border-top-color: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .cap-key {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .cap-val {
+    color: rgb(15 23 42);
+  }
+
+  /* bottom marquee strip */
+  :global(html:not(.dark)) .bottom-strip {
+    border-top-color: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .strip-eyebrow {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .strip-track {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .strip-bullet {
+    color: rgb(5 150 105);
+  }
+
+  /* scroll hint + animated bg accents */
+  :global(html:not(.dark)) .scroll-hint {
+    color: rgb(71 85 105);
+  }
+  :global(html:not(.dark)) .scroll-hint:hover {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .grid {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+  }
+  :global(html:not(.dark)) .aurora-1 {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.18), transparent 70%);
+  }
+  :global(html:not(.dark)) .aurora-2 {
+    background: radial-gradient(circle, rgba(5, 150, 105, 0.14), transparent 70%);
+  }
+  :global(html:not(.dark)) .cursor-glow {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.16), transparent 65%);
   }
 
   /* RESPONSIVE */
