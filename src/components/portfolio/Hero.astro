@@ -292,10 +292,10 @@ const skillIcons = primarySkills.map((s) => s.icon);
 
       type Active = { skill: string; img: HTMLImageElement };
       const active = new Map<HTMLElement, Active>();
-      const MAX_ACTIVE = 5;
-      const HOLD_MIN = 2200;
-      const HOLD_MAX = 4200;
-      const FADE_OUT = 700;
+      const MAX_ACTIVE = 6;
+      const HOLD_MIN = 900;
+      const HOLD_MAX = 1700;
+      const FADE_OUT = 380;
 
       // Pre-warm the cache by hitting each icon URL once for the current theme
       const preload = (dark: boolean) => {
@@ -337,11 +337,11 @@ const skillIcons = primarySkills.map((s) => s.icon);
         window.setTimeout(() => releaseCell(cell), hold);
       };
 
-      // Cadence: a new icon every 320–620ms
+      // Cadence: a new icon every 160–340ms (faster turnover)
       let timer: number;
       const schedule = () => {
         activateRandom();
-        timer = window.setTimeout(schedule, 320 + Math.random() * 300);
+        timer = window.setTimeout(schedule, 160 + Math.random() * 180);
       };
       schedule();
 
@@ -886,18 +886,18 @@ const skillIcons = primarySkills.map((s) => s.icon);
     height: auto;
     max-width: 16px;
     opacity: 0;
-    transform: scale(0.4) rotate(-8deg);
+    transform: scale(0.5) rotate(-8deg);
     /* simpleicons returns transparent monochrome SVGs already tinted via the
        URL color param; the soft glow below adds depth without recoloring. */
-    filter: drop-shadow(0 0 6px rgba(110, 231, 183, 0.55));
+    filter: drop-shadow(0 0 5px rgba(110, 231, 183, 0.4));
     transition:
-      opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      filter 700ms ease;
+      opacity 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      filter 380ms ease;
   }
 
   .skill-cell.is-active img {
-    opacity: 0.85;
+    opacity: 0.45;
     transform: scale(1) rotate(0deg);
   }
 
@@ -912,14 +912,14 @@ const skillIcons = primarySkills.map((s) => s.icon);
     aspect-ratio: 1;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(110, 231, 183, 0.22), transparent 70%);
-    animation: cell-halo 3.4s ease-in-out infinite;
+    background: radial-gradient(circle, rgba(110, 231, 183, 0.1), transparent 70%);
+    animation: cell-halo 2s ease-in-out infinite;
     pointer-events: none;
   }
 
   @keyframes cell-halo {
-    0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.95); }
-    50%      { opacity: 0.9; transform: translate(-50%, -50%) scale(1.1); }
+    0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.95); }
+    50%      { opacity: 0.55; transform: translate(-50%, -50%) scale(1.08); }
   }
 
   /* COPY */
@@ -1461,13 +1461,13 @@ const skillIcons = primarySkills.map((s) => s.icon);
     background: rgba(15, 23, 42, 0.18);
   }
   :global(html:not(.dark)) .skill-cell img {
-    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.35));
+    filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.28));
   }
   :global(html:not(.dark)) .skill-cell.is-active img {
-    opacity: 1;
+    opacity: 0.55;
   }
   :global(html:not(.dark)) .skill-cell.is-active::after {
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.18), transparent 70%);
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.1), transparent 70%);
   }
 
   /* portrait overlays in light mode (less aggressive blending) */
