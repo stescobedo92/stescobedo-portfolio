@@ -19,7 +19,9 @@ const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
 
 // Favicon mirrors the same GitHub avatar used in About / Hero so updating
 // the GitHub profile picture instantly refreshes both surfaces.
-const faviconUrl = `https://github.com/${profile.githubUsername}.png?size=128`;
+// Multiple sizes are exposed so browsers pick the right one for tabs,
+// bookmarks, retina displays, and home-screen shortcuts.
+const ghAvatar = (size: number) => `https://github.com/${profile.githubUsername}.png?size=${size}`;
 ---
 
 <!doctype html>
@@ -28,9 +30,9 @@ const faviconUrl = `https://github.com/${profile.githubUsername}.png?size=128`;
 		<meta charset="UTF-8" />
 		<meta name="description" content="Blog personal" />
 		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/png" href={faviconUrl} />
-		<link rel="apple-touch-icon" href={faviconUrl} />
-		<link rel="shortcut icon" type="image/svg+xml" href={withBase('ste-avatar.svg')} />
+		<link rel="icon" type="image/png" sizes="32x32" href={ghAvatar(64)} />
+		<link rel="icon" type="image/png" sizes="192x192" href={ghAvatar(192)} />
+		<link rel="apple-touch-icon" sizes="180x180" href={ghAvatar(180)} />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 		<script is:inline>
