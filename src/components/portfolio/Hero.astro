@@ -21,11 +21,12 @@ const iconByNetwork = {
 
 <section class="hero" aria-label="Intro" id="hero">
   <a id="about" class="anchor-alias" aria-hidden="true"></a>
-  <!-- Animated grid background -->
+  <!-- Animated grid background + falling code-rain canvas -->
   <div class="hero-bg" aria-hidden="true">
     <div class="grid"></div>
     <div class="aurora aurora-1"></div>
     <div class="aurora aurora-2"></div>
+    <canvas class="code-rain" id="code-rain"></canvas>
     <div class="cursor-glow" id="cursor-glow"></div>
   </div>
 
@@ -122,7 +123,7 @@ const iconByNetwork = {
     </div>
 
     <!-- RIGHT: portrait card -->
-    <aside class="portrait-card" aria-label="Portrait">
+    <aside class="portrait-card" aria-label="Portrait" id="portrait-card">
       <span class="portrait-prop" aria-hidden="true">portrait:</span>
 
       <figure class="portrait-frame">
@@ -144,14 +145,22 @@ const iconByNetwork = {
           </ul>
         </div>
 
-        <img
-          src={profile.image}
-          alt={profile.name}
-          width="420"
-          height="420"
-          loading="eager"
-          data-github-avatar
-        />
+        <div class="portrait-photo">
+          <img
+            src={profile.image}
+            alt={profile.name}
+            width="420"
+            height="420"
+            loading="eager"
+            data-github-avatar
+          />
+          <span class="portrait-scanline" aria-hidden="true"></span>
+          <span class="portrait-rec" aria-hidden="true">
+            <span class="rec-dot"></span>
+            <span class="rec-text">REC</span>
+          </span>
+          <span class="portrait-grid-overlay" aria-hidden="true"></span>
+        </div>
 
         <figcaption class="portrait-caption">
           <span class="cap-line">
@@ -199,21 +208,223 @@ const iconByNetwork = {
     if (!hero || (hero as any).dataset.ready === 'true') return;
     (hero as any).dataset.ready = 'true';
 
-    // Mouse-tracked cursor glow
+    // Mouse-tracked cursor glow + 3D parallax tilt on the portrait card
     const glow = document.getElementById('cursor-glow');
-    if (glow) {
-      const onMove = (e: MouseEvent) => {
-        const rect = hero.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+    const portraitCard = document.getElementById('portrait-card');
+    const onMove = (e: MouseEvent) => {
+      const rect = hero.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (glow) {
         glow.style.transform = `translate(${x - 200}px, ${y - 200}px)`;
         glow.style.opacity = '1';
-      };
-      const onLeave = () => {
-        glow.style.opacity = '0';
-      };
-      hero.addEventListener('mousemove', onMove);
-      hero.addEventListener('mouseleave', onLeave);
+      }
+      if (portraitCard) {
+        const nx = (x / rect.width - 0.5) * 2;  // -1..1
+        const ny = (y / rect.height - 0.5) * 2; // -1..1
+        portraitCard.style.setProperty('--tilt-y', `${nx * 6}deg`);
+        portraitCard.style.setProperty('--tilt-x', `${-ny * 5}deg`);
+        portraitCard.style.setProperty('--shift-x', `${nx * 4}px`);
+        portraitCard.style.setProperty('--shift-y', `${-ny * 4}px`);
+      }
+    };
+    const onLeave = () => {
+      if (glow) glow.style.opacity = '0';
+      if (portraitCard) {
+        portraitCard.style.setProperty('--tilt-x', '0deg');
+        portraitCard.style.setProperty('--tilt-y', '0deg');
+        portraitCard.style.setProperty('--shift-x', '0px');
+        portraitCard.style.setProperty('--shift-y', '0px');
+      }
+    };
+    hero.addEventListener('mousemove', onMove);
+    hero.addEventListener('mouseleave', onLeave);
+
+    // ── Code rain: matrix-style stream of code tokens ──
+    const canvas = document.getElementById('code-rain') as HTMLCanvasElement | null;
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (canvas && !reduceMotion) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const html = document.documentElement;
+        const isDark = () => html.classList.contains('dark');
+
+        // Token pools — what falls in each stream. Mix of code keywords,
+        // operators, hex digits and symbols so the rain reads as "code"
+        // rather than random characters.
+        const TOKENS = [
+          'fn', 'pub', 'let', 'mut', 'use', 'mod', 'impl', 'self',
+          'async', 'await', 'Ok', 'Err', 'Some', 'None', 'Self',
+          'const', '=>', '::', '&&', '||', '==', '!=', '<=', '>=',
+          '0xff', '0x0a', '0b01', 'true', 'false', 'null', 'void',
+          'try', 'pkg', 'lib', 'main', 'init', 'box', 'arc', 'mut',
+        ];
+        const SYMBOLS = ['{', '}', '[', ']', '(', ')', ';', ':', '?', '!', '_', '$', '#', '@', '<', '>', '+', '-', '*', '/'];
+        const HEX = '0123456789abcdef'.split('');
+        const HEAD_GLYPHS = ['▶', '█', '▌', '▎', '◆', '⬢'];
+
+        const pickChar = (preferLong: boolean): string => {
+          const r = Math.random();
+          if (preferLong) {
+            if (r < 0.55) return TOKENS[Math.floor(Math.random() * TOKENS.length)];
+            if (r < 0.80) return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+            return HEX[Math.floor(Math.random() * HEX.length)];
+          } else {
+            if (r < 0.55) return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+            if (r < 0.85) return HEX[Math.floor(Math.random() * HEX.length)];
+            return TOKENS[Math.floor(Math.random() * TOKENS.length)];
+          }
+        };
+
+        type Stream = {
+          col: number;       // column index
+          y: number;         // head row position (fractional)
+          speed: number;     // rows per frame
+          length: number;    // trail length in rows
+          chars: string[];   // pre-baked chars per trail position
+          churn: number;     // probability the trail mutates each frame
+          longBias: boolean; // prefers tokens vs symbols
+        };
+
+        const FONT_SIZE = 14;
+        const LINE_HEIGHT = 18;
+        let cols = 0;
+        let rows = 0;
+        let streams: Stream[] = [];
+        let W = 0;
+        let H = 0;
+
+        const newStream = (col: number, atTop = false): Stream => ({
+          col,
+          y: atTop ? -Math.random() * 12 : Math.random() * (rows + 12) - 12,
+          // Gentler speeds + tighter range so streams glide instead of dart
+          speed: 0.08 + Math.random() * 0.22,
+          length: 6 + Math.floor(Math.random() * 18),
+          chars: Array.from({ length: 24 }, () => pickChar(Math.random() < 0.45)),
+          churn: 0.03 + Math.random() * 0.12,
+          longBias: Math.random() < 0.45,
+        });
+
+        const resize = () => {
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const rect = canvas.getBoundingClientRect();
+          W = rect.width;
+          H = rect.height;
+          canvas.width = Math.max(1, Math.floor(W * dpr));
+          canvas.height = Math.max(1, Math.floor(H * dpr));
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          cols = Math.max(4, Math.floor(W / FONT_SIZE));
+          rows = Math.max(8, Math.floor(H / LINE_HEIGHT));
+          streams = Array.from({ length: cols }, (_, i) => newStream(i, false));
+        };
+
+        resize();
+        const ro = new ResizeObserver(resize);
+        ro.observe(canvas);
+
+        const draw = () => {
+          const dark = isDark();
+
+          // 1. Translucent fill = trail-fade. Tinted to match the page bg.
+          //    Lower alpha → trails persist longer → silkier continuous flow.
+          ctx.fillStyle = dark ? 'rgba(13, 22, 42, 0.07)' : 'rgba(255, 255, 255, 0.10)';
+          ctx.fillRect(0, 0, W, H);
+
+          ctx.font = `500 ${FONT_SIZE}px 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace`;
+          ctx.textBaseline = 'top';
+
+          const HEAD_RGB = dark ? '220, 252, 231' : '6, 95, 70';
+          const TAIL_RGB = dark ? '110, 231, 183' : '16, 185, 129';
+
+          for (const s of streams) {
+            // Occasional churn so trail chars mutate as they fall
+            if (Math.random() < s.churn) {
+              const idx = Math.floor(Math.random() * s.length);
+              s.chars[idx] = pickChar(s.longBias);
+            }
+
+            for (let i = 0; i < s.length; i++) {
+              const rowY = s.y - i;
+              if (rowY < -1 || rowY > rows + 1) continue;
+              const x = s.col * FONT_SIZE;
+              const y = rowY * LINE_HEIGHT;
+
+              if (i === 0) {
+                // Head: bright + slightly larger glyph
+                const headChar = Math.random() < 0.18
+                  ? HEAD_GLYPHS[Math.floor(Math.random() * HEAD_GLYPHS.length)]
+                  : s.chars[0];
+                ctx.fillStyle = `rgba(${HEAD_RGB}, 0.95)`;
+                ctx.shadowColor = `rgba(${TAIL_RGB}, 0.6)`;
+                ctx.shadowBlur = 6;
+                ctx.fillText(headChar, x, y);
+                ctx.shadowBlur = 0;
+              } else {
+                // Trail: progressively dimmer, slightly transparent
+                const t = 1 - i / s.length;
+                const alpha = Math.max(0, t * 0.65);
+                ctx.fillStyle = `rgba(${TAIL_RGB}, ${alpha})`;
+                ctx.fillText(s.chars[i] ?? '·', x, y);
+              }
+            }
+
+            s.y += s.speed;
+
+            // Reset stream once the trail clears the bottom
+            if (s.y - s.length > rows + 4) {
+              if (Math.random() < 0.4) {
+                streams[s.col] = newStream(s.col, true);
+              }
+            }
+          }
+        };
+
+        // Throttle to ~20 fps via rAF + timestamp guard for a calmer feel
+        const TARGET_FPS = 20;
+        const FRAME_INTERVAL = 1000 / TARGET_FPS;
+        let lastFrame = 0;
+        let rafId = 0;
+        let running = false;
+
+        const loop = (now: number) => {
+          if (!running) return;
+          if (now - lastFrame >= FRAME_INTERVAL) {
+            draw();
+            lastFrame = now;
+          }
+          rafId = requestAnimationFrame(loop);
+        };
+
+        const start = () => {
+          if (running) return;
+          running = true;
+          rafId = requestAnimationFrame(loop);
+        };
+        const stop = () => {
+          running = false;
+          cancelAnimationFrame(rafId);
+        };
+
+        // Pause when the hero scrolls out of view to spare battery
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) start();
+              else stop();
+            }
+          },
+          { threshold: 0 },
+        );
+        io.observe(hero);
+
+        // Re-paint immediately on theme toggle so the fade tint follows the page bg
+        const themeObserver = new MutationObserver(() => {
+          // One transparent fill in the new theme erases the lingering opposite tint
+          ctx.fillStyle = isDark() ? 'rgba(13, 22, 42, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+          ctx.fillRect(0, 0, W, H);
+        });
+        themeObserver.observe(html, { attributes: true, attributeFilter: ['class'] });
+      }
     }
 
     // Live time clock
@@ -373,6 +584,16 @@ const iconByNetwork = {
     font-size: 0.92rem;
   }
 
+  /* 3D tilt is driven by JS via custom properties — see initializeHero() */
+  .portrait-card {
+    --tilt-x: 0deg;
+    --tilt-y: 0deg;
+    --shift-x: 0px;
+    --shift-y: 0px;
+    perspective: 900px;
+    perspective-origin: 50% 30%;
+  }
+
   .portrait-frame {
     position: relative;
     width: 100%;
@@ -381,12 +602,18 @@ const iconByNetwork = {
     border: 1px solid rgba(187, 247, 208, 0.18);
     background: rgba(34, 46, 78, 0.7);
     backdrop-filter: blur(10px);
-    transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 280ms ease;
+    transform:
+      rotateX(var(--tilt-x))
+      rotateY(var(--tilt-y))
+      translate3d(var(--shift-x), var(--shift-y), 0);
+    transform-style: preserve-3d;
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 280ms ease, box-shadow 320ms ease;
+    box-shadow: 0 18px 48px rgba(4, 12, 32, 0.4);
   }
 
   .portrait-frame:hover {
-    transform: translateY(-4px);
-    border-color: rgba(110, 231, 183, 0.4);
+    border-color: rgba(110, 231, 183, 0.55);
+    box-shadow: 0 32px 80px rgba(4, 12, 32, 0.55);
   }
 
   .portrait-corner {
@@ -450,17 +677,127 @@ const iconByNetwork = {
     outline: none;
   }
 
-  .portrait-frame > img {
+  /* PORTRAIT PHOTO + CRT-STYLE OVERLAYS */
+  .portrait-photo {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .portrait-photo img {
     display: block;
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
-    filter: saturate(0.75) contrast(1.05);
-    transition: filter 320ms ease;
+    filter: saturate(0.78) contrast(1.05);
+    transition: filter 320ms ease, transform 480ms ease;
+    will-change: filter;
   }
 
-  .portrait-frame:hover > img {
+  .portrait-frame:hover .portrait-photo img {
     filter: saturate(1) contrast(1);
+    transform: scale(1.015);
+  }
+
+  /* horizontal scan-line that drifts down the photo */
+  .portrait-scanline {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background:
+      linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(110, 231, 183, 0.28) 48%,
+        rgba(167, 243, 208, 0.6) 50%,
+        rgba(110, 231, 183, 0.28) 52%,
+        transparent 100%
+      );
+    background-size: 100% 18%;
+    background-repeat: no-repeat;
+    background-position: 0% -20%;
+    mix-blend-mode: screen;
+    animation: scanline-sweep 4.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    opacity: 0.6;
+  }
+
+  @keyframes scanline-sweep {
+    0%   { background-position: 0% -20%;  opacity: 0; }
+    8%   { opacity: 0.65; }
+    50%  { background-position: 0% 110%;  opacity: 0.55; }
+    52%  { opacity: 0; }
+    100% { background-position: 0% 110%;  opacity: 0; }
+  }
+
+  /* faint scanline texture (always on) */
+  .portrait-photo::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(13, 22, 42, 0.0) 0px,
+        rgba(13, 22, 42, 0.0) 2px,
+        rgba(13, 22, 42, 0.18) 3px,
+        rgba(13, 22, 42, 0.0) 4px
+      );
+    mix-blend-mode: multiply;
+    opacity: 0.35;
+  }
+
+  /* live REC indicator */
+  .portrait-rec {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    padding: 0.18rem 0.45rem;
+    border: 1px solid rgba(252, 165, 165, 0.65);
+    border-radius: 999px;
+    background: rgba(13, 22, 42, 0.78);
+    backdrop-filter: blur(4px);
+    color: rgb(252 165 165);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .rec-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(248 113 113);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.6);
+    animation: rec-pulse 1.6s ease-out infinite;
+  }
+
+  @keyframes rec-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); }
+    70%  { box-shadow: 0 0 0 7px rgba(248, 113, 113, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
+  }
+
+  /* very faint grid overlay on the photo (cell hint) */
+  .portrait-grid-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background-image:
+      linear-gradient(rgba(110, 231, 183, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(110, 231, 183, 0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+    mix-blend-mode: screen;
+    opacity: 0.55;
   }
 
   .portrait-caption {
@@ -477,6 +814,7 @@ const iconByNetwork = {
     display: flex;
     align-items: baseline;
     gap: 0.55rem;
+    min-width: 0;
   }
 
   .cap-key {
@@ -487,6 +825,10 @@ const iconByNetwork = {
 
   .cap-val {
     color: rgb(187 247 208);
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
   }
 
   /* ANIMATED BACKGROUND */
@@ -559,6 +901,83 @@ const iconByNetwork = {
     opacity: 0;
     transition: opacity 320ms ease, transform 80ms linear;
     will-change: transform, opacity;
+  }
+
+  /* ─────────  CODE RAIN (Matrix-style canvas)  ─────────
+     Lives in the right band of the hero, around the portrait. A radial
+     mask carves out the card itself so the rain never falls onto the
+     photo or caption. JS draws code tokens at ~24 fps in canvas. */
+  .code-rain {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: clamp(320px, 48%, 640px);
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.62;
+    -webkit-mask-image:
+      /* carve out the portrait card area */
+      radial-gradient(
+        ellipse 50% 36% at 28% 30%,
+        transparent 0%,
+        transparent 78%,
+        black 100%
+      ),
+      /* fade the edges so streams don't terminate sharply */
+      linear-gradient(
+        to right,
+        transparent 0%,
+        black 12%,
+        black 88%,
+        transparent 100%
+      );
+            mask-image:
+      radial-gradient(
+        ellipse 50% 36% at 28% 30%,
+        transparent 0%,
+        transparent 78%,
+        black 100%
+      ),
+      linear-gradient(
+        to right,
+        transparent 0%,
+        black 12%,
+        black 88%,
+        transparent 100%
+      );
+    -webkit-mask-composite: source-in;
+            mask-composite: intersect;
+    /* Vertical fade so heads emerge softly at the top and dissolve at the bottom */
+    -webkit-mask-image:
+      radial-gradient(
+        ellipse 50% 36% at 28% 30%,
+        transparent 0%,
+        transparent 78%,
+        black 100%
+      ),
+      linear-gradient(
+        180deg,
+        transparent 0%,
+        black 8%,
+        black 90%,
+        transparent 100%
+      );
+            mask-image:
+      radial-gradient(
+        ellipse 50% 36% at 28% 30%,
+        transparent 0%,
+        transparent 78%,
+        black 100%
+      ),
+      linear-gradient(
+        180deg,
+        transparent 0%,
+        black 8%,
+        black 90%,
+        transparent 100%
+      );
   }
 
   /* COPY */
@@ -920,26 +1339,212 @@ const iconByNetwork = {
     50% { opacity: 1; }
   }
 
-  /* LIGHT MODE */
-  :global(html:not(.dark)) .name-row {
-    color: rgb(22 30 52);
+  /* ═══════════════════════  LIGHT MODE  ═══════════════════════ */
+  /* greeting / code-line tokens */
+  :global(html:not(.dark)) .greeting {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .greeting > span:nth-child(2) {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .greet-symbol {
+    color: rgb(5 150 105);
   }
 
+  /* display name + motto */
+  :global(html:not(.dark)) .name-row,
+  :global(html:not(.dark)) .name-text {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .name-period {
+    color: rgb(5 150 105);
+  }
   :global(html:not(.dark)) .motto {
-    color: rgb(22 30 52);
+    color: rgb(15 23 42);
   }
-
   :global(html:not(.dark)) .summary {
-    color: rgb(48 62 98);
+    color: rgb(51 65 85);
   }
 
+  /* props (code-object body) */
+  :global(html:not(.dark)) .prop-key {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .prop-val {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .prop-val.str {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .prop-val.num {
+    color: rgb(180 83 9);
+  }
+  :global(html:not(.dark)) .prop-op {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .prop-comma {
+    color: rgb(148 163 184);
+  }
+  :global(html:not(.dark)) .prop-comment {
+    color: rgb(100 116 139);
+  }
+  :global(html:not(.dark)) .closing-bracket {
+    color: rgb(5 150 105);
+  }
+
+  /* status bar */
   :global(html:not(.dark)) .status-bar {
-    background: rgba(255, 255, 255, 0.6);
-    border-color: rgba(15, 23, 42, 0.1);
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgb(226 232 240);
+    color: rgb(51 65 85);
+  }
+  :global(html:not(.dark)) .status-val {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .status-key {
+    color: rgb(100 116 139);
+  }
+  :global(html:not(.dark)) .status-dot,
+  :global(html:not(.dark)) .status-dot.live {
+    background: rgb(16 185 129);
+  }
+  :global(html:not(.dark)) .status-sep {
+    background: rgb(203 213 225);
   }
 
-  :global(html:not(.dark)) .status-val {
-    color: rgb(22 30 52);
+  /* CTAs in light mode */
+  :global(html:not(.dark)) .cta.primary {
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+    color: rgb(255 255 255);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
+  }
+  :global(html:not(.dark)) .cta.primary:hover {
+    box-shadow: 0 14px 36px rgba(16, 185, 129, 0.35);
+  }
+  :global(html:not(.dark)) .cta.secondary {
+    border-color: rgb(5 150 105);
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .cta.secondary:hover {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .cta.ghost {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .cta.ghost:hover {
+    color: rgb(5 150 105);
+  }
+
+  /* portrait card */
+  :global(html:not(.dark)) .portrait-prop {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .portrait-frame {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  }
+  :global(html:not(.dark)) .portrait-frame:hover {
+    border-color: rgb(16 185 129);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+  }
+  :global(html:not(.dark)) .portrait-corner {
+    border-color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .portrait-tag {
+    background: rgb(248 250 252);
+    color: rgb(5 150 105);
+    border: 1px solid rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .portrait-socials {
+    background: rgb(248 250 252);
+    border: 1px solid rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .portrait-socials a {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .portrait-socials a:hover,
+  :global(html:not(.dark)) .portrait-socials a:focus-visible {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .portrait-caption {
+    border-top-color: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .cap-key {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .cap-val {
+    color: rgb(15 23 42);
+  }
+
+  /* bottom marquee strip */
+  :global(html:not(.dark)) .bottom-strip {
+    border-top-color: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .strip-eyebrow {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .strip-track {
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .strip-bullet {
+    color: rgb(5 150 105);
+  }
+
+  /* scroll hint + animated bg accents */
+  :global(html:not(.dark)) .scroll-hint {
+    color: rgb(71 85 105);
+  }
+  :global(html:not(.dark)) .scroll-hint:hover {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .grid {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+  }
+  :global(html:not(.dark)) .aurora-1 {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.18), transparent 70%);
+  }
+  :global(html:not(.dark)) .aurora-2 {
+    background: radial-gradient(circle, rgba(5, 150, 105, 0.14), transparent 70%);
+  }
+  :global(html:not(.dark)) .cursor-glow {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.16), transparent 65%);
+  }
+
+  /* code rain in light mode — slightly higher opacity so the muted
+     emerald characters still register against white */
+  :global(html:not(.dark)) .code-rain {
+    opacity: 0.72;
+  }
+
+  /* portrait overlays in light mode (less aggressive blending) */
+  :global(html:not(.dark)) .portrait-photo::before {
+    opacity: 0.18;
+  }
+  :global(html:not(.dark)) .portrait-grid-overlay {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+    mix-blend-mode: multiply;
+    opacity: 0.5;
+  }
+  :global(html:not(.dark)) .portrait-rec {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(190, 18, 60, 0.4);
+    color: rgb(190 18 60);
+  }
+  :global(html:not(.dark)) .rec-dot {
+    background: rgb(220 38 38);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55);
+  }
+  :global(html:not(.dark)) .portrait-frame {
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.1);
+  }
+  :global(html:not(.dark)) .portrait-frame:hover {
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
   }
 
   /* RESPONSIVE */

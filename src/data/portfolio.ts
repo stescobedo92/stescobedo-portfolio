@@ -39,7 +39,7 @@ export const profile = {
   githubUsername: 'stescobedo92',
   name: 'Sergio Triana Escobedo',
   label: 'Full Stack Developer',
-  location: 'United States / Mexico',
+  location: 'Cuernavaca/Mexico',
   email: 'stescobedo.31@gmail.com',
   image: 'https://github.com/stescobedo92.png?size=420',
   summary:

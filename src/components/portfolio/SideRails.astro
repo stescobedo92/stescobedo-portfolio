@@ -399,4 +399,66 @@ const iconByNetwork = {
       display: flex;
     }
   }
+
+  /* ═══════════════════════  LIGHT MODE  ═══════════════════════ */
+  :global(html:not(.dark)) .rail {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .rail-cap {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .social-list a {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .social-list a::before {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .social-ring {
+    border-color: rgb(203 213 225);
+  }
+  :global(html:not(.dark)) .social-list a:hover .social-ring,
+  :global(html:not(.dark)) .social-list a:focus-visible .social-ring {
+    border-color: rgb(5 150 105);
+    background: rgba(16, 185, 129, 0.08);
+  }
+  :global(html:not(.dark)) .social-list a:hover,
+  :global(html:not(.dark)) .social-list a:focus-visible {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .spine-line {
+    background: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .spine-fill {
+    background: linear-gradient(to bottom, rgb(16 185 129), rgb(5 150 105));
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.45);
+  }
+  :global(html:not(.dark)) .mark {
+    background: rgb(203 213 225);
+  }
+  :global(html:not(.dark)) .spine-pulse {
+    background: rgb(5 150 105);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  :global(html:not(.dark)) .email-btn {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .email-btn::after {
+    background: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .email-btn:hover,
+  :global(html:not(.dark)) .email-btn:focus-visible {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .tooltip {
+    background: rgb(255 255 255);
+    border-color: rgb(5 150 105);
+    color: rgb(5 150 105);
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
+  }
+  :global(html:not(.dark)) .postmark-ring {
+    border-color: rgba(5, 150, 105, 0.5);
+  }
+  :global(html:not(.dark)) .postmark-text {
+    color: rgb(5 150 105);
+  }
 </style>

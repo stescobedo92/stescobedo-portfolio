@@ -1511,6 +1511,7 @@ const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
   }
 
   /* ═══════════════════════  LIGHT MODE  ═══════════════════════ */
+  /* containers */
   html:not(.dark) .file-header,
   html:not(.dark) .frontmatter,
   html:not(.dark) .article-footer,
@@ -1518,6 +1519,7 @@ const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
   html:not(.dark) .side-card {
     background: rgb(255 255 255);
     border-color: rgb(226 232 240);
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
   }
 
   html:not(.dark) .path-bar,
@@ -1526,8 +1528,56 @@ const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
   html:not(.dark) .side-head,
   html:not(.dark) .tab-strip {
     background: rgb(248 250 252);
+    border-bottom-color: rgb(226 232 240);
   }
 
+  /* path-bar */
+  html:not(.dark) .path-bar { color: rgb(71 85 105); }
+  html:not(.dark) .back-link { color: rgb(5 150 105); }
+  html:not(.dark) .back-link:hover { background: rgb(236 253 245); color: rgb(15 118 110); }
+  html:not(.dark) .path-sep { color: rgb(148 163 184); }
+  html:not(.dark) .path-seg { color: rgb(71 85 105); }
+  html:not(.dark) .path-seg.active { color: rgb(15 23 42); }
+  html:not(.dark) .path-pos {
+    background: rgb(236 253 245);
+    color: rgb(5 150 105);
+  }
+
+  /* tab strip */
+  html:not(.dark) .tab { color: rgb(100 116 139); }
+  html:not(.dark) .tab.is-active { color: rgb(15 23 42); background: rgb(255 255 255); }
+  html:not(.dark) .tab-name { color: rgb(15 23 42); }
+  html:not(.dark) .tab-close { color: rgb(148 163 184); }
+  html:not(.dark) .tab-fade { background: linear-gradient(90deg, rgb(248 250 252) 0%, rgba(248,250,252,0.3) 100%); }
+
+  /* file substats */
+  html:not(.dark) .file-substats { color: rgb(51 65 85); }
+  html:not(.dark) .file-substats .sub-key { color: rgb(5 150 105); }
+  html:not(.dark) .file-substats .sub-val { color: rgb(15 23 42); }
+  html:not(.dark) .file-substats .sub-val.mono { color: rgb(180 83 9); }
+  html:not(.dark) .sub-action { color: rgb(71 85 105); }
+  html:not(.dark) a.sub-action:hover { color: rgb(5 150 105); }
+  html:not(.dark) .sub-pipe { color: rgb(203 213 225); }
+
+  /* frontmatter */
+  html:not(.dark) .frontmatter summary { color: rgb(51 65 85); }
+  html:not(.dark) .frontmatter summary:hover { color: rgb(5 150 105); }
+  html:not(.dark) .fm-arrow { color: rgb(5 150 105); }
+  html:not(.dark) .fm-token { color: rgb(180 83 9); }
+  html:not(.dark) .fm-label { color: rgb(15 23 42); }
+  html:not(.dark) .fm-hint { color: rgb(148 163 184); }
+  html:not(.dark) .fm-yaml { background: rgb(248 250 252); border-top-color: rgb(226 232 240); }
+  html:not(.dark) .yaml-key { color: rgb(29 78 216); }
+  html:not(.dark) .yaml-colon { color: rgb(100 116 139); }
+  html:not(.dark) .yaml-str { color: rgb(15 118 110); }
+  html:not(.dark) .yaml-num { color: rgb(180 83 9); }
+  html:not(.dark) .yaml-arr { color: rgb(124 58 237); }
+  html:not(.dark) .yaml-token { color: rgb(180 83 9); }
+
+  /* article header */
+  html:not(.dark) .kicker { color: rgb(71 85 105); }
+  html:not(.dark) .kicker-cat { color: rgb(5 150 105); }
+  html:not(.dark) .kicker-sep { color: rgb(148 163 184); }
   html:not(.dark) .article-title,
   html:not(.dark) .article-body h1,
   html:not(.dark) .article-body h2,
@@ -1535,36 +1585,153 @@ const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
   html:not(.dark) .article-body h4,
   html:not(.dark) .byline-name,
   html:not(.dark) .adj-name,
-  html:not(.dark) .meta-row dd,
-  html:not(.dark) .path-seg.active,
-  html:not(.dark) .fm-label {
+  html:not(.dark) .meta-row dd {
     color: rgb(15 23 42);
   }
-
-  html:not(.dark) .article-body,
-  html:not(.dark) .dek,
-  html:not(.dark) .footer-text {
-    color: rgb(51 65 85);
+  html:not(.dark) .md-h1-prefix { color: rgb(5 150 105); }
+  html:not(.dark) .article-body h2::before,
+  html:not(.dark) .article-body h3::before {
+    color: rgb(5 150 105);
   }
+  html:not(.dark) .article-body h2 { border-bottom-color: rgb(226 232 240); }
+  html:not(.dark) .dek { color: rgb(51 65 85); }
+  html:not(.dark) .md-quote-prefix { color: rgb(5 150 105); }
 
+  /* byline */
+  html:not(.dark) .byline {
+    background: rgb(248 250 252);
+    border-color: rgb(167 243 208);
+  }
+  html:not(.dark) .avatar { border-color: rgb(5 150 105); }
+  html:not(.dark) .byline-role { color: rgb(71 85 105); }
+
+  /* article body prose */
+  html:not(.dark) .article-body { color: rgb(51 65 85); }
+  html:not(.dark) .article-body > p:first-of-type::first-letter { color: rgb(5 150 105); }
+  html:not(.dark) .article-body a { color: rgb(5 150 105); }
+  html:not(.dark) .article-body a:hover { color: rgb(15 118 110); }
   html:not(.dark) .article-body code {
     background: rgb(236 253 245);
     border-color: rgb(167 243 208);
     color: rgb(15 118 110);
   }
-
   html:not(.dark) .article-body pre {
     background: rgb(15 23 42);
     border-color: rgb(15 23 42);
   }
-  html:not(.dark) .article-body pre code { color: rgb(226 232 240); }
+  html:not(.dark) .article-body pre code {
+    color: rgb(226 232 240);
+    background: transparent;
+    border: 0;
+  }
+  html:not(.dark) .article-body ul li::before { color: rgb(5 150 105); }
+  html:not(.dark) .article-body blockquote {
+    background: linear-gradient(90deg, rgb(236 253 245), transparent 60%);
+    border-left-color: rgb(5 150 105);
+    color: rgb(51 65 85);
+  }
+  html:not(.dark) .article-body hr { border-top-color: rgba(5, 150, 105, 0.5); }
+  html:not(.dark) .article-body table { border-color: rgb(226 232 240); }
+  html:not(.dark) .article-body table th {
+    background: rgb(248 250 252);
+    color: rgb(15 23 42);
+  }
+  html:not(.dark) .article-body table td { border-bottom-color: rgb(241 245 249); }
 
-  html:not(.dark) .yaml-key { color: rgb(29 78 216); }
-  html:not(.dark) .yaml-str { color: rgb(15 118 110); }
-  html:not(.dark) .yaml-num { color: rgb(180 83 9); }
-  html:not(.dark) .yaml-token { color: rgb(180 83 9); }
+  /* article footer / share / tags */
+  html:not(.dark) .article-footer { border-color: rgb(167 243 208); }
+  html:not(.dark) .footer-line { border-bottom-color: rgb(226 232 240); }
+  html:not(.dark) .footer-token { color: rgb(100 116 139); }
+  html:not(.dark) .footer-eyebrow { color: rgb(5 150 105); }
+  html:not(.dark) .footer-text { color: rgb(15 23 42); }
+  html:not(.dark) .share-row { border-top-color: rgb(226 232 240); }
+  html:not(.dark) .share-label { color: rgb(5 150 105); }
+  html:not(.dark) .share-btn {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+    color: rgb(15 118 110);
+  }
+  html:not(.dark) .share-btn:hover {
+    background: rgb(236 253 245);
+    border-color: rgb(5 150 105);
+    color: rgb(5 150 105);
+  }
+  html:not(.dark) .share-btn.is-copied {
+    color: rgb(180 83 9);
+    border-color: rgb(180 83 9);
+  }
+  html:not(.dark) .tags li {
+    background: rgb(248 250 252);
+    border-color: rgb(226 232 240);
+    color: rgb(71 85 105);
+  }
 
-  html:not(.dark) .fm-yaml { background: rgb(248 250 252); }
+  /* adjacent files */
+  html:not(.dark) .adj-title { color: rgb(5 150 105); }
+  html:not(.dark) .adj-glyph { color: rgb(5 150 105); }
+  html:not(.dark) .adj-card:hover {
+    background: rgb(236 253 245);
+    border-color: rgb(5 150 105);
+  }
+  html:not(.dark) .adj-label { color: rgb(5 150 105); }
+  html:not(.dark) .adj-fname { color: rgb(15 118 110); }
+  html:not(.dark) .adj-meta { color: rgb(71 85 105); }
+
+  /* back-cta */
+  html:not(.dark) .back-cta-wrap { border-top-color: rgb(226 232 240); }
+  html:not(.dark) .back-cta {
+    background: rgb(255 255 255);
+    border-color: rgb(167 243 208);
+    color: rgb(5 150 105);
+  }
+  html:not(.dark) .back-cta:hover {
+    background: rgb(236 253 245);
+    border-color: rgb(5 150 105);
+    color: rgb(15 118 110);
+  }
+
+  /* sidebar */
+  html:not(.dark) .side-head { border-bottom-color: rgb(226 232 240); }
+  html:not(.dark) .side-glyph { color: rgb(5 150 105); }
+  html:not(.dark) .side-head h2 { color: rgb(15 23 42); }
+  html:not(.dark) .side-rule { background: rgb(167 243 208); }
+
+  /* TOC */
+  html:not(.dark) .toc-item a { color: rgb(71 85 105); }
+  html:not(.dark) .toc-item.depth-3 a { color: rgb(100 116 139); }
+  html:not(.dark) .toc-marker { background: rgb(203 213 225); }
+  html:not(.dark) .toc-item a:hover {
+    background: rgb(236 253 245);
+    color: rgb(15 23 42);
+  }
+  html:not(.dark) .toc-item a:hover .toc-marker { background: rgb(5 150 105); }
+  html:not(.dark) .toc-item a.is-active {
+    background: rgb(236 253 245);
+    color: rgb(5 150 105);
+  }
+  html:not(.dark) .toc-item a.is-active .toc-marker { background: rgb(5 150 105); }
+  html:not(.dark) .toc-empty { color: rgb(148 163 184); }
+
+  /* meta card */
+  html:not(.dark) .meta-row dt { color: rgb(5 150 105); }
+  html:not(.dark) .meta-row dd { color: rgb(15 23 42); }
+  html:not(.dark) .meta-row dd.mono { color: rgb(15 118 110); }
+  html:not(.dark) .meta-row dd.accent { color: rgb(180 83 9); }
+  html:not(.dark) .meta-action {
+    background: rgb(236 253 245);
+    border-color: rgb(167 243 208);
+    color: rgb(5 150 105);
+  }
+  html:not(.dark) .meta-action:hover {
+    background: rgb(167 243 208);
+    color: rgb(6 78 59);
+  }
+
+  /* reading-progress in light mode (more contrast) */
+  html:not(.dark) .reading-progress {
+    background: linear-gradient(90deg, rgb(5 150 105) 0%, rgb(16 185 129) 50%, rgb(180 83 9) 100%);
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+  }
 
   /* ═══════════════════════  RESPONSIVE  ═══════════════════════ */
   @media (max-width: 1080px) {

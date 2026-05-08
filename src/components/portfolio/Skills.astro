@@ -337,6 +337,11 @@ const rowB = skills.filter((_, i) => i % 2 === 1);
     border-color: rgba(15, 23, 42, 0.1);
   }
 
+  :global(html:not(.dark)) .footer-note {
+    color: rgb(5 150 105);
+    opacity: 0.85;
+  }
+
   /* RESPONSIVE */
   @media (max-width: 700px) {
     .stats {
