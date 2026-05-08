@@ -264,8 +264,30 @@ const skillIcons = primarySkills.map((s) => s.icon);
       const cells = Array.from(matrix.querySelectorAll<HTMLElement>('.skill-cell'));
       const html = document.documentElement;
       const isDark = () => html.classList.contains('dark');
-      const iconUrl = (name: string, dark: boolean) =>
-        `https://skillicons.dev/icons?i=${name}&theme=${dark ? 'dark' : 'light'}`;
+
+      // Map our skill keys to simpleicons.org slugs (some differ).
+      // simpleicons CDN returns transparent monochrome SVGs and accepts a
+      // hex color in the path so we can tint to the site's emerald palette.
+      const SLUG_MAP: Record<string, string> = {
+        dotnet: 'dotnet',
+        rust: 'rust',
+        nodejs: 'nodedotjs',
+        python: 'python',
+        cpp: 'cplusplus',
+        typescript: 'typescript',
+        aws: 'amazonwebservices',
+        docker: 'docker',
+        githubactions: 'githubactions',
+        postgres: 'postgresql',
+        linux: 'linux',
+        git: 'git',
+      };
+      // emerald-400 (#6ee7b7) on dark, emerald-700 (#059669) on light
+      const iconUrl = (name: string, dark: boolean) => {
+        const slug = SLUG_MAP[name] ?? name;
+        const color = dark ? '6ee7b7' : '059669';
+        return `https://cdn.simpleicons.org/${slug}/${color}`;
+      };
 
       type Active = { skill: string; img: HTMLImageElement };
       const active = new Map<HTMLElement, Active>();
@@ -850,12 +872,14 @@ const skillIcons = primarySkills.map((s) => s.icon);
   }
 
   .skill-cell img {
-    width: 64%;
+    width: 56%;
     aspect-ratio: 1;
     height: auto;
     opacity: 0;
     transform: scale(0.4) rotate(-8deg);
-    filter: drop-shadow(0 6px 18px rgba(110, 231, 183, 0.28));
+    /* simpleicons returns transparent monochrome SVGs already tinted via the
+       URL color param; the soft glow below adds depth without recoloring. */
+    filter: drop-shadow(0 0 14px rgba(110, 231, 183, 0.55));
     transition:
       opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
       transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -863,7 +887,7 @@ const skillIcons = primarySkills.map((s) => s.icon);
   }
 
   .skill-cell.is-active img {
-    opacity: 0.78;
+    opacity: 0.92;
     transform: scale(1) rotate(0deg);
   }
 
@@ -1422,10 +1446,10 @@ const skillIcons = primarySkills.map((s) => s.icon);
     background: rgba(15, 23, 42, 0.18);
   }
   :global(html:not(.dark)) .skill-cell img {
-    filter: drop-shadow(0 6px 14px rgba(15, 23, 42, 0.18));
+    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.35));
   }
   :global(html:not(.dark)) .skill-cell.is-active img {
-    opacity: 0.92;
+    opacity: 1;
   }
   :global(html:not(.dark)) .skill-cell.is-active::after {
     background: radial-gradient(circle, rgba(16, 185, 129, 0.18), transparent 70%);
