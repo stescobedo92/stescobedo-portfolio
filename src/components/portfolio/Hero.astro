@@ -297,10 +297,11 @@ const iconByNetwork = {
         const newStream = (col: number, atTop = false): Stream => ({
           col,
           y: atTop ? -Math.random() * 12 : Math.random() * (rows + 12) - 12,
-          speed: 0.18 + Math.random() * 0.55,
+          // Gentler speeds + tighter range so streams glide instead of dart
+          speed: 0.08 + Math.random() * 0.22,
           length: 6 + Math.floor(Math.random() * 18),
           chars: Array.from({ length: 24 }, () => pickChar(Math.random() < 0.45)),
-          churn: 0.05 + Math.random() * 0.25,
+          churn: 0.03 + Math.random() * 0.12,
           longBias: Math.random() < 0.45,
         });
 
@@ -325,7 +326,8 @@ const iconByNetwork = {
           const dark = isDark();
 
           // 1. Translucent fill = trail-fade. Tinted to match the page bg.
-          ctx.fillStyle = dark ? 'rgba(13, 22, 42, 0.10)' : 'rgba(255, 255, 255, 0.14)';
+          //    Lower alpha → trails persist longer → silkier continuous flow.
+          ctx.fillStyle = dark ? 'rgba(13, 22, 42, 0.07)' : 'rgba(255, 255, 255, 0.10)';
           ctx.fillRect(0, 0, W, H);
 
           ctx.font = `500 ${FONT_SIZE}px 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace`;
@@ -377,8 +379,8 @@ const iconByNetwork = {
           }
         };
 
-        // Throttle to ~24 fps via rAF + timestamp guard
-        const TARGET_FPS = 24;
+        // Throttle to ~20 fps via rAF + timestamp guard for a calmer feel
+        const TARGET_FPS = 20;
         const FRAME_INTERVAL = 1000 / TARGET_FPS;
         let lastFrame = 0;
         let rafId = 0;
