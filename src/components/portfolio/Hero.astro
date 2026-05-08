@@ -477,6 +477,7 @@ const iconByNetwork = {
     display: flex;
     align-items: baseline;
     gap: 0.55rem;
+    min-width: 0;
   }
 
   .cap-key {
@@ -487,6 +488,10 @@ const iconByNetwork = {
 
   .cap-val {
     color: rgb(187 247 208);
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
   }
 
   /* ANIMATED BACKGROUND */
