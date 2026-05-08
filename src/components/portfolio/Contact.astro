@@ -566,16 +566,134 @@ const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(
     flex: 1;
   }
 
-  /* LIGHT MODE */
-  :global(html:not(.dark)) .ide {
-    background: rgb(248 250 252);
-    border-color: rgba(15, 23, 42, 0.08);
+  /* ═══════════════════════  LIGHT MODE  ═══════════════════════ */
+  :global(html:not(.dark)) .contact-eyebrow,
+  :global(html:not(.dark)) .contact-eyebrow .dash {
+    color: rgb(5 150 105);
   }
 
-  :global(html:not(.dark)) .line,
-  :global(html:not(.dark)) input,
+  :global(html:not(.dark)) .ide {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  }
+
+  /* IDE bar (top dots + tab + meta) */
+  :global(html:not(.dark)) .ide-bar {
+    background: rgb(248 250 252);
+    border-bottom-color: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .ide-tab {
+    background: rgb(255 255 255);
+    border-color: rgb(167 243 208);
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .tab-icon,
+  :global(html:not(.dark)) .tab-modified {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .ide-meta {
+    color: rgb(71 85 105);
+  }
+  :global(html:not(.dark)) .meta-key {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .meta-arrow {
+    color: rgb(15 118 110);
+  }
+  :global(html:not(.dark)) .meta-val {
+    color: rgb(15 23 42);
+  }
+
+  /* gutter line numbers */
+  :global(html:not(.dark)) .gutter {
+    color: rgb(148 163 184);
+    border-right-color: rgb(226 232 240);
+  }
+
+  /* default line text */
+  :global(html:not(.dark)) .line {
+    color: rgb(15 23 42);
+  }
+
+  /* SYNTAX TOKENS — proper VS-Code-Light mapping */
+  :global(html:not(.dark)) .kw       { color: rgb(124 58 237); }   /* violet for keywords */
+  :global(html:not(.dark)) .var      { color: rgb(15 118 110); }   /* teal for vars */
+  :global(html:not(.dark)) .fn,
+  :global(html:not(.dark)) .fn-call  { color: rgb(29 78 216); }    /* blue for functions */
+  :global(html:not(.dark)) .param    { color: rgb(100 116 139); }
+  :global(html:not(.dark)) .punct    { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .op,
+  :global(html:not(.dark)) .quote    { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .comment  { color: rgb(71 85 105); }    /* readable but muted */
+
+  /* INPUTS rendered as string literals */
+  :global(html:not(.dark)) input[type='text'],
+  :global(html:not(.dark)) input[type='email'],
   :global(html:not(.dark)) textarea {
-    color: rgb(22 30 52);
+    color: rgb(15 118 110);
+    border-bottom-color: rgb(203 213 225);
+  }
+  :global(html:not(.dark)) textarea {
+    border-color: rgb(203 213 225);
+  }
+  :global(html:not(.dark)) input::placeholder,
+  :global(html:not(.dark)) textarea::placeholder {
+    color: rgb(148 163 184);
+  }
+  :global(html:not(.dark)) input:focus,
+  :global(html:not(.dark)) textarea:focus {
+    border-bottom-color: rgb(5 150 105);
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) textarea:focus {
+    border-color: rgb(5 150 105);
+  }
+
+  :global(html:not(.dark)) .error {
+    color: rgb(190 18 60);
+  }
+
+  /* SUBMIT BUTTON */
+  :global(html:not(.dark)) button[type='submit'] {
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+    border-color: rgb(5 150 105);
+    color: rgb(255 255 255);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.28);
+  }
+  :global(html:not(.dark)) button[type='submit']:hover {
+    box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
+  }
+
+  /* status + email link */
+  :global(html:not(.dark)) #form-status {
+    color: rgb(71 85 105);
+  }
+  :global(html:not(.dark)) #form-status.success {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .email-inline {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .email-inline:hover {
+    color: rgb(15 118 110);
+  }
+
+  /* statusbar (bottom) */
+  :global(html:not(.dark)) .ide-statusbar {
+    background: rgb(236 253 245);
+    border-top-color: rgb(167 243 208);
+    color: rgb(51 65 85);
+  }
+  :global(html:not(.dark)) .sb-key {
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .sb-dot {
+    background: rgb(5 150 105);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+  }
+  :global(html:not(.dark)) .sb-sep {
+    background: rgb(203 213 225);
   }
 
   /* RESPONSIVE */

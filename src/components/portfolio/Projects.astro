@@ -1759,14 +1759,93 @@ const otherViews = otherProjects.map((project, index) => {
     border-color: rgb(226 232 240);
   }
 
+  :global(html:not(.dark)) .manifest-card {
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+  :global(html:not(.dark)) .manifest-num { color: rgb(100 116 139); }
   :global(html:not(.dark)) .manifest-lang { color: rgb(15 23 42); }
-  :global(html:not(.dark)) .manifest-desc .repo-description { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .manifest-version {
+    background: rgb(236 253 245);
+    border-color: rgb(167 243 208);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .manifest-head { border-bottom-color: rgb(226 232 240); }
+  :global(html:not(.dark)) .manifest-desc .repo-description {
+    color: rgb(51 65 85);
+    border-left-color: rgb(167 243 208);
+  }
   :global(html:not(.dark)) .ms-key { color: rgb(190 18 60); }
   :global(html:not(.dark)) .ms-prop { color: rgb(29 78 216); }
   :global(html:not(.dark)) .ms-val { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .ms-eq { color: rgb(100 116 139); }
   :global(html:not(.dark)) .ms-arr { color: rgb(180 83 9); }
-  :global(html:not(.dark)) .repo-languages li { background: rgb(248 250 252); color: rgb(15 118 110); }
+  :global(html:not(.dark)) .ms-link:hover { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .repo-languages li {
+    background: rgb(255 255 255);
+    border-color: rgb(167 243 208);
+    color: rgb(15 118 110);
+  }
+
+  /* manifest footer (where the screenshot showed the pale stats) */
+  :global(html:not(.dark)) .manifest-foot { border-top-color: rgb(226 232 240); }
+  :global(html:not(.dark)) .foot-stats .foot-stat { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .foot-links a { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .foot-links a:hover { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .active-dot { color: rgb(5 150 105); }
+
+  /* workspace head */
+  :global(html:not(.dark)) .ws-glyph { color: rgb(5 150 105); }
   :global(html:not(.dark)) .ws-title h3 { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .ws-title p { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .ws-rule {
+    background: linear-gradient(90deg, rgb(203 213 225), transparent);
+  }
+  :global(html:not(.dark)) .ws-link { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .ws-link:hover { color: rgb(15 118 110); }
+
+  /* show-more (cargo search) */
+  :global(html:not(.dark)) .show-more {
+    background: rgb(255 255 255);
+    border-color: rgb(167 243 208);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .show-more:hover {
+    background: rgb(236 253 245);
+    border-color: rgb(5 150 105);
+  }
+
+  /* IDE meta pane stat cells, shortcuts, action buttons */
+  :global(html:not(.dark)) .meta-eyebrow { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .meta-actions .action.ghost {
+    color: rgb(15 118 110);
+    border-color: rgb(167 243 208);
+  }
+  :global(html:not(.dark)) .meta-actions .action.ghost:hover {
+    border-color: rgb(5 150 105);
+    background: rgb(236 253 245);
+  }
+  :global(html:not(.dark)) .meta-actions .action.primary {
+    color: rgb(255 255 255);
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+  }
+  :global(html:not(.dark)) .stat-num { color: var(--lang-hue); }
+  :global(html:not(.dark)) .stat-key { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .meta-highlights .hl-num { color: rgb(100 116 139); }
+
+  /* breadcrumb glyph + bc-action */
+  :global(html:not(.dark)) .bc-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .bc-seg { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .bc-sep { color: rgb(148 163 184); }
+  :global(html:not(.dark)) .bc-action { color: rgb(5 150 105); }
+
+  /* tab glyphs / dots */
+  :global(html:not(.dark)) .tab-close { color: rgb(148 163 184); }
+  :global(html:not(.dark)) .tab-dot { background: rgb(203 213 225); }
+
+  /* statusbar — stays language-tinted (intentional) */
+  :global(html:not(.dark)) .statusbar { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .sb-status .sb-dot { background: rgba(15, 23, 42, 0.4); }
+  :global(html:not(.dark)) .sb-status.is-active .sb-dot { background: rgb(15 23 42); }
 
   /* ═══════════════════════  RESPONSIVE  ═══════════════════════ */
   @media (max-width: 900px) {
