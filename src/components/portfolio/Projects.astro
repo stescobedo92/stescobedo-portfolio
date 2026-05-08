@@ -168,24 +168,40 @@ const renderForLang = (project: typeof projects[number], lang: LangMeta): Line[]
   return renderRust(project); // sensible default
 };
 
+// 8-bar procedural waveform derived from a project's hash. Stable across
+// renders, no assets — feels like a tiny activity sparkline.
+const activityBars = (seed: number) =>
+  Array.from({ length: 8 }, (_, i) => 28 + ((seed >>> (i * 3)) & 0x3f));
+
 // Pre-compute previews for all featured projects so we can render them once
 const featuredViews = featured.map((project, index) => {
   const lang = detectLang(project.tech);
   const lines = renderForLang(project, lang);
   const metrics = mockMetrics(project);
   const version = mockVersion(project);
+  const seed = hashSeed(project.name);
   return {
     project,
     lang,
     lines,
     metrics,
     version,
+    bars: activityBars(seed),
     tabId: `tab-${index}`,
     panelId: `panel-${index}`,
     isActive: index === 0,
     fileName: `${fileSlug(project.name)}.${lang.ext}`,
   };
 });
+
+// Workspace summary stats for the command header (live mock totals).
+const wsStats = {
+  crates: featuredViews.length,
+  langs: new Set(featuredViews.map((v) => v.lang.key)).size,
+  loc: featuredViews.reduce((acc, v) => acc + v.metrics.lines, 0),
+};
+const formatLoc = (n: number) =>
+  n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
 // For other projects, mock metrics + cargo-style sections
 const otherViews = otherProjects.map((project, index) => {
@@ -197,20 +213,40 @@ const otherViews = otherProjects.map((project, index) => {
 ---
 
 <Section title="Selected Work" id="projects">
-  <!-- ────────  IDE WORKSPACE (featured)  ──────── -->
-  <div class="ide" role="region" aria-label="Featured projects, displayed as an IDE workspace">
-    <!-- Window chrome -->
-    <div class="ide-chrome" aria-hidden="true">
-      <span class="dot dot-r"></span>
-      <span class="dot dot-y"></span>
-      <span class="dot dot-g"></span>
-      <span class="chrome-title">workspace · selected-work</span>
-      <span class="chrome-spacer"></span>
-      <span class="chrome-meta">{featured.length} files open</span>
-    </div>
+  <!-- ────────  WORKSPACE DECK (featured)  ──────── -->
+  <div class="ide" role="region" aria-label="Featured projects, displayed as a workspace deck">
+    <!-- Command header — replaces the traffic-light chrome -->
+    <header class="ws-header" aria-hidden="true">
+      <div class="ws-prompt">
+        <span class="ws-glyph">⌗</span>
+        <span class="ws-cmd">
+          <span class="ws-cmd-bin">cargo</span>
+          <span class="ws-cmd-sub">workspace</span>
+          <span class="ws-cmd-flag">--select</span>
+        </span>
+        <span class="ws-caret"></span>
+      </div>
 
-    <!-- Tab bar -->
-    <div class="ide-tabs" role="tablist" aria-label="Project files">
+      <div class="ws-stats">
+        <span class="ws-stat">
+          <span class="ws-stat-key">crates</span>
+          <span class="ws-stat-val">{wsStats.crates}</span>
+        </span>
+        <span class="ws-stat-sep" aria-hidden="true"></span>
+        <span class="ws-stat">
+          <span class="ws-stat-key">langs</span>
+          <span class="ws-stat-val">{wsStats.langs}</span>
+        </span>
+        <span class="ws-stat-sep" aria-hidden="true"></span>
+        <span class="ws-stat">
+          <span class="ws-stat-key">loc</span>
+          <span class="ws-stat-val">{formatLoc(wsStats.loc)}</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- Project deck (radios drive :checked + the panels below) -->
+    <div class="deck" role="tablist" aria-label="Project files">
       {featuredViews.map((view, index) => (
         <input
           type="radio"
@@ -221,23 +257,58 @@ const otherViews = otherProjects.map((project, index) => {
           aria-controls={view.panelId}
         />
       ))}
-      <div class="tab-strip">
+
+      <div class="deck-row">
         {featuredViews.map((view, index) => (
           <label
             for={view.tabId}
-            class="tab"
+            class="deck-card"
             data-tab-index={index}
             role="tab"
             tabindex="0"
-            style={`--lang-hue: rgb(${view.lang.hue});`}
+            style={`--lang-hue: rgb(${view.lang.hue}); --lang-hue-soft: rgba(${view.lang.hueSoft} / 0.18);`}
           >
-            <span class="tab-glyph" aria-hidden="true">{view.lang.glyph}</span>
-            <span class="tab-name">{view.fileName}</span>
-            <span class="tab-dot" aria-hidden="true"></span>
-            <span class="tab-close" aria-hidden="true">×</span>
+            <span class="card-accent" aria-hidden="true"></span>
+            <span class="card-shine" aria-hidden="true"></span>
+
+            <div class="card-row card-row-top">
+              <span class="card-lang">
+                <span class="card-glyph" aria-hidden="true">{view.lang.glyph}</span>
+                <span class="card-lang-name">{view.lang.label}</span>
+              </span>
+              <span class={`card-status ${view.project.active ? 'is-active' : ''}`}>
+                <span class="card-status-dot" aria-hidden="true"></span>
+                <span class="card-status-text">{view.project.active ? 'active' : 'shipped'}</span>
+              </span>
+            </div>
+
+            <h3 class="card-name">{view.project.name}</h3>
+
+            <div class="card-row card-row-mid">
+              <span class="card-version" aria-label="Version">
+                <span class="version-glyph" aria-hidden="true">v</span>
+                {view.version}
+              </span>
+              <span class="card-bars" aria-hidden="true">
+                {view.bars.map((h) => (
+                  <span class="card-bar" style={`--h: ${h}%`}></span>
+                ))}
+              </span>
+            </div>
+
+            <div class="card-row card-row-bot">
+              <span class="card-stars" aria-label="Stars">
+                <span class="star-glyph" aria-hidden="true">★</span>
+                {view.metrics.stars}
+              </span>
+              <span class="card-now" aria-hidden="true">
+                <span class="now-dot"></span>
+                <span>now showing</span>
+              </span>
+              <span class="card-jump" aria-hidden="true">↳</span>
+            </div>
           </label>
         ))}
-        <span class="tab-fade-right" aria-hidden="true"></span>
       </div>
     </div>
 
@@ -617,31 +688,31 @@ const otherViews = otherProjects.map((project, index) => {
   };
 
   const initializeProjects = () => {
-    // ── Tab keyboard nav ──
-    const tabs = Array.from(document.querySelectorAll<HTMLLabelElement>('.ide-tabs .tab'));
-    tabs.forEach((tab) => {
-      if ((tab as any).dataset.bound === 'true') return;
-      (tab as any).dataset.bound = 'true';
-      tab.addEventListener('keydown', (event) => {
+    // ── Deck-card keyboard nav (arrow keys when focused) ──
+    const cards = Array.from(document.querySelectorAll<HTMLLabelElement>('.deck .deck-card'));
+    cards.forEach((card) => {
+      if ((card as any).dataset.bound === 'true') return;
+      (card as any).dataset.bound = 'true';
+      card.addEventListener('keydown', (event) => {
         if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
         event.preventDefault();
-        const idx = tabs.indexOf(tab);
-        const next = (idx + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-        const radio = document.getElementById(tabs[next].getAttribute('for') ?? '') as HTMLInputElement | null;
+        const idx = cards.indexOf(card);
+        const next = (idx + (event.key === 'ArrowRight' ? 1 : -1) + cards.length) % cards.length;
+        const radio = document.getElementById(cards[next].getAttribute('for') ?? '') as HTMLInputElement | null;
         if (radio) {
           radio.checked = true;
-          tabs[next].focus();
+          cards[next].focus();
         }
       });
     });
 
-    // Global keyboard shortcut: ⌘/Ctrl + → / ←
+    // Global keyboard shortcut: ⌘/Ctrl + → / ← anywhere inside the IDE region
     if (!(document as any).__projectsTabHotkeysBound) {
       (document as any).__projectsTabHotkeysBound = true;
       document.addEventListener('keydown', (event) => {
         if (!event.metaKey && !event.ctrlKey) return;
         if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
-        const radios = Array.from(document.querySelectorAll<HTMLInputElement>('.ide-tabs .tab-radio'));
+        const radios = Array.from(document.querySelectorAll<HTMLInputElement>('.deck .tab-radio'));
         if (radios.length === 0) return;
         const activeIdx = radios.findIndex((r) => r.checked);
         if (activeIdx === -1) return;
@@ -768,52 +839,101 @@ const otherViews = otherProjects.map((project, index) => {
   }
 
   /* ─── window chrome ─── */
-  .ide-chrome {
+  /* ─── Workspace command header (replaces window chrome) ─── */
+  .ws-header {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.65rem 0.95rem;
-    background: rgba(13, 22, 42, 0.7);
-    border-bottom: 1px solid rgba(187, 247, 208, 0.08);
+    flex-wrap: wrap;
+    gap: 0.85rem 1.5rem;
+    padding: 0.9rem 1.1rem;
+    background:
+      linear-gradient(180deg, rgba(13, 22, 42, 0.85), rgba(22, 30, 52, 0.6)),
+      repeating-linear-gradient(90deg, transparent 0 18px, rgba(110, 231, 183, 0.04) 18px 19px);
+    border-bottom: 1px solid rgba(110, 231, 183, 0.16);
     font-family: var(--mono);
+    font-size: 0.78rem;
+  }
+
+  .ws-prompt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+  }
+
+  .ws-glyph {
+    color: var(--emerald-400);
+    font-size: 1rem;
+  }
+
+  .ws-cmd {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+
+  .ws-cmd-bin { color: var(--slate-100); font-weight: 600; }
+  .ws-cmd-sub { color: var(--violet-300); }
+  .ws-cmd-flag { color: var(--amber-300); }
+
+  .ws-caret {
+    display: inline-block;
+    width: 8px;
+    height: 1.05em;
+    background: var(--emerald-400);
+    margin-left: 0.3rem;
+    animation: ws-caret-blink 1.05s steps(1) infinite;
+    vertical-align: -3px;
+  }
+
+  @keyframes ws-caret-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+
+  .ws-stats {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
     font-size: 0.7rem;
   }
 
-  .ide-chrome .dot {
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    flex-shrink: 0;
+  .ws-stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.32rem;
   }
 
-  .ide-chrome .dot-r { background: rgb(255 95 86); }
-  .ide-chrome .dot-y { background: rgb(254 188 46); }
-  .ide-chrome .dot-g { background: rgb(40 200 64); }
-
-  .chrome-title {
-    margin-left: 0.6rem;
-    color: rgba(187, 247, 208, 0.7);
-    letter-spacing: 0.02em;
-  }
-
-  .chrome-spacer {
-    flex: 1;
-  }
-
-  .chrome-meta {
-    color: rgba(110, 231, 183, 0.55);
+  .ws-stat-key {
+    color: rgba(110, 231, 183, 0.6);
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    font-size: 0.6rem;
+    font-size: 0.58rem;
   }
 
-  /* ─── tab bar (CSS-only via radio inputs) ─── */
-  .ide-tabs {
+  .ws-stat-val {
+    color: var(--slate-100);
+    font-weight: 700;
+  }
+
+  .ws-stat-sep {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(187, 247, 208, 0.28);
+  }
+
+  /* ─── Project deck (cards) ─── */
+  .deck {
     position: relative;
-    background: rgba(22, 30, 52, 0.95);
-    border-bottom: 1px solid rgba(110, 231, 183, 0.12);
+    background:
+      linear-gradient(180deg, rgba(22, 30, 52, 0.85), rgba(13, 22, 42, 0.5));
+    padding: 1.1rem 1.1rem 1.25rem;
+    border-bottom: 1px solid rgba(110, 231, 183, 0.1);
+    overflow: hidden;
   }
 
+  /* hide the radio inputs but keep them functional */
   .tab-radio {
     position: absolute;
     width: 1px;
@@ -822,121 +942,323 @@ const otherViews = otherProjects.map((project, index) => {
     pointer-events: none;
   }
 
-  .tab-strip {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(110, 231, 183, 0.2) transparent;
+  .deck-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.85rem;
   }
 
-  .tab-strip::-webkit-scrollbar { height: 4px; }
-  .tab-strip::-webkit-scrollbar-thumb { background: rgba(110, 231, 183, 0.2); border-radius: 999px; }
-
-  .tab {
+  .deck-card {
+    --card-bg: rgba(28, 38, 70, 0.65);
     position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1rem 0.65rem 0.85rem;
-    border-right: 1px solid rgba(187, 247, 208, 0.06);
-    background: transparent;
-    color: rgba(187, 247, 208, 0.55);
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.85rem 0.95rem 0.75rem;
+    border: 1px solid rgba(187, 247, 208, 0.12);
+    border-radius: 10px;
+    background: var(--card-bg);
+    color: var(--slate-300);
     font-family: var(--mono);
-    font-size: 0.78rem;
     cursor: pointer;
     user-select: none;
-    white-space: nowrap;
-    transition: color 220ms ease, background-color 220ms ease;
+    overflow: hidden;
+    transition:
+      transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 240ms ease,
+      box-shadow 280ms ease,
+      background-color 240ms ease;
   }
 
-  .tab:hover {
-    color: var(--emerald-100);
-    background: rgba(110, 231, 183, 0.04);
+  .deck-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--lang-hue);
+    box-shadow: 0 14px 36px rgba(4, 12, 32, 0.4);
   }
 
-  .tab:focus-visible {
-    outline: 1px solid var(--emerald-400);
-    outline-offset: -2px;
+  .deck-card:focus-visible {
+    outline: 2px solid var(--emerald-400);
+    outline-offset: 2px;
   }
 
-  .tab-glyph {
-    color: var(--lang-hue);
-    font-size: 0.85rem;
-  }
-
-  .tab-name {
-    font-weight: 500;
-  }
-
-  .tab-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgba(187, 247, 208, 0.35);
-    margin-left: 0.25rem;
-    transition: background 220ms ease;
-  }
-
-  .tab-close {
-    margin-left: 0.15rem;
-    color: rgba(187, 247, 208, 0.4);
-    font-size: 1rem;
-    line-height: 1;
-    width: 16px;
-    height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: background-color 180ms ease, color 180ms ease;
-  }
-
-  .tab:hover .tab-close {
-    background: rgba(187, 247, 208, 0.08);
-    color: var(--emerald-100);
-  }
-
-  .tab-fade-right {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 30px;
-    background: linear-gradient(90deg, transparent, rgba(22, 30, 52, 0.95));
-    pointer-events: none;
-  }
-
-  /* Active tab styling — driven by :checked sibling */
-  .tab-radio:nth-of-type(1):checked ~ .tab-strip > .tab[data-tab-index="0"],
-  .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"],
-  .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"],
-  .tab-radio:nth-of-type(4):checked ~ .tab-strip > .tab[data-tab-index="3"],
-  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"] {
-    color: var(--slate-100);
-    background: rgba(34, 46, 78, 0.65);
-  }
-
-  .tab-radio:nth-of-type(1):checked ~ .tab-strip > .tab[data-tab-index="0"]::before,
-  .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"]::before,
-  .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"]::before,
-  .tab-radio:nth-of-type(4):checked ~ .tab-strip > .tab[data-tab-index="3"]::before,
-  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"]::before {
-    content: '';
+  /* top accent strip (language hue) */
+  .card-accent {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     height: 2px;
     background: var(--lang-hue);
+    opacity: 0.55;
+    transition: opacity 240ms ease, height 240ms ease, box-shadow 320ms ease;
+  }
+
+  .deck-card:hover .card-accent {
+    opacity: 1;
     box-shadow: 0 0 12px var(--lang-hue);
   }
 
-  .tab-radio:nth-of-type(1):checked ~ .tab-strip > .tab[data-tab-index="0"] .tab-dot,
-  .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"] .tab-dot,
-  .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"] .tab-dot {
+  /* holographic shine sweep — diagonal gradient that crosses on hover */
+  .card-shine {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.08) 45%,
+      rgba(255, 255, 255, 0.18) 50%,
+      rgba(255, 255, 255, 0.08) 55%,
+      transparent 70%
+    );
+    transform: translateX(-110%);
+    transition: transform 720ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    mix-blend-mode: screen;
+  }
+
+  .deck-card:hover .card-shine {
+    transform: translateX(110%);
+  }
+
+  /* card rows */
+  .card-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card-row-mid {
+    justify-content: space-between;
+    gap: 0.65rem;
+  }
+
+  .card-row-bot {
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+  }
+
+  /* language label */
+  .card-lang {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    font-size: 0.66rem;
+    color: rgba(110, 231, 183, 0.65);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .card-glyph {
+    color: var(--lang-hue);
+    font-size: 0.85rem;
+  }
+
+  .card-lang-name {
+    color: var(--lang-hue);
+    font-weight: 700;
+  }
+
+  /* status pill */
+  .card-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid rgba(187, 247, 208, 0.18);
+    border-radius: 999px;
+    background: rgba(13, 22, 42, 0.5);
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(187, 247, 208, 0.7);
+  }
+
+  .card-status.is-active {
+    border-color: rgba(110, 231, 183, 0.5);
+    color: var(--emerald-400);
+    background: rgba(110, 231, 183, 0.08);
+  }
+
+  .card-status-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.65);
+  }
+
+  .card-status.is-active .card-status-dot {
+    background: var(--emerald-400);
+    box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.55);
+    animation: ws-status-pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes ws-status-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.55); }
+    70%  { box-shadow: 0 0 0 6px rgba(110, 231, 183, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0); }
+  }
+
+  /* project name (the editorial focus point) */
+  .card-name {
+    margin: 0;
+    color: var(--slate-100);
+    font-family: var(--display);
+    font-size: 1.1rem;
+    font-style: italic;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144, 'WONK' 1;
+    letter-spacing: -0.012em;
+    line-height: 1.2;
+  }
+
+  /* version pill */
+  .card-version {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.18rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid rgba(110, 231, 183, 0.22);
+    border-radius: 4px;
+    background: rgba(110, 231, 183, 0.06);
+    color: var(--emerald-300);
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+  }
+
+  .version-glyph {
+    color: rgba(110, 231, 183, 0.6);
+    font-style: italic;
+    font-size: 0.62rem;
+  }
+
+  /* mini activity waveform */
+  .card-bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 16px;
+    flex: 1;
+    justify-content: flex-end;
+    opacity: 0.55;
+    transition: opacity 240ms ease;
+  }
+
+  .deck-card:hover .card-bars {
+    opacity: 0.95;
+  }
+
+  .card-bar {
+    display: inline-block;
+    width: 3px;
+    height: var(--h, 50%);
     background: var(--lang-hue);
-    box-shadow: 0 0 6px var(--lang-hue);
+    border-radius: 1px 1px 0 0;
+    opacity: 0.7;
+  }
+
+  /* stars */
+  .card-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    color: rgba(187, 247, 208, 0.7);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+
+  .star-glyph {
+    color: var(--amber-300);
+    font-size: 0.78rem;
+  }
+
+  /* "now showing" badge — visible only on the active card */
+  .card-now {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    padding: 0.08rem 0.45rem;
+    border-radius: 999px;
+    background: rgba(110, 231, 183, 0.12);
+    color: var(--emerald-400);
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 280ms ease, transform 280ms ease;
+  }
+
+  .now-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--emerald-400);
+    box-shadow: 0 0 8px var(--emerald-400);
+  }
+
+  /* the "↳ jump" arrow points down to the editor when this card is active */
+  .card-jump {
+    color: rgba(187, 247, 208, 0.4);
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    transition: color 240ms ease, transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .deck-card:hover .card-jump {
+    color: var(--emerald-400);
+    transform: translateY(2px);
+  }
+
+  /* ── Active state — driven by the :checked radio sibling ── */
+  .tab-radio:nth-of-type(1):checked ~ .deck-row > .deck-card[data-tab-index="0"],
+  .tab-radio:nth-of-type(2):checked ~ .deck-row > .deck-card[data-tab-index="1"],
+  .tab-radio:nth-of-type(3):checked ~ .deck-row > .deck-card[data-tab-index="2"],
+  .tab-radio:nth-of-type(4):checked ~ .deck-row > .deck-card[data-tab-index="3"],
+  .tab-radio:nth-of-type(5):checked ~ .deck-row > .deck-card[data-tab-index="4"] {
+    border-color: var(--lang-hue);
+    background:
+      linear-gradient(180deg, rgba(34, 46, 78, 0.85), rgba(28, 38, 70, 0.7)),
+      radial-gradient(circle at 100% 0%, var(--lang-hue-soft), transparent 55%);
+    box-shadow:
+      0 0 0 1px var(--lang-hue),
+      0 14px 38px rgba(4, 12, 32, 0.5),
+      0 0 24px -2px var(--lang-hue-soft);
+    transform: translateY(-2px);
+  }
+
+  .tab-radio:nth-of-type(1):checked ~ .deck-row > .deck-card[data-tab-index="0"] .card-accent,
+  .tab-radio:nth-of-type(2):checked ~ .deck-row > .deck-card[data-tab-index="1"] .card-accent,
+  .tab-radio:nth-of-type(3):checked ~ .deck-row > .deck-card[data-tab-index="2"] .card-accent,
+  .tab-radio:nth-of-type(4):checked ~ .deck-row > .deck-card[data-tab-index="3"] .card-accent,
+  .tab-radio:nth-of-type(5):checked ~ .deck-row > .deck-card[data-tab-index="4"] .card-accent {
+    opacity: 1;
+    height: 3px;
+    box-shadow: 0 0 16px var(--lang-hue);
+  }
+
+  .tab-radio:nth-of-type(1):checked ~ .deck-row > .deck-card[data-tab-index="0"] .card-now,
+  .tab-radio:nth-of-type(2):checked ~ .deck-row > .deck-card[data-tab-index="1"] .card-now,
+  .tab-radio:nth-of-type(3):checked ~ .deck-row > .deck-card[data-tab-index="2"] .card-now,
+  .tab-radio:nth-of-type(4):checked ~ .deck-row > .deck-card[data-tab-index="3"] .card-now,
+  .tab-radio:nth-of-type(5):checked ~ .deck-row > .deck-card[data-tab-index="4"] .card-now {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .tab-radio:nth-of-type(1):checked ~ .deck-row > .deck-card[data-tab-index="0"] .card-bars,
+  .tab-radio:nth-of-type(2):checked ~ .deck-row > .deck-card[data-tab-index="1"] .card-bars,
+  .tab-radio:nth-of-type(3):checked ~ .deck-row > .deck-card[data-tab-index="2"] .card-bars {
+    opacity: 1;
+  }
+
+  .tab-radio:nth-of-type(1):checked ~ .deck-row > .deck-card[data-tab-index="0"] .card-jump,
+  .tab-radio:nth-of-type(2):checked ~ .deck-row > .deck-card[data-tab-index="1"] .card-jump,
+  .tab-radio:nth-of-type(3):checked ~ .deck-row > .deck-card[data-tab-index="2"] .card-jump {
+    color: var(--lang-hue);
+    transform: translateY(3px);
   }
 
   /* ─── editor body ─── */
@@ -1698,33 +2020,97 @@ const otherViews = otherProjects.map((project, index) => {
     box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
   }
 
-  :global(html:not(.dark)) .ide-chrome {
-    background: rgb(241 245 249);
+  /* workspace command header — light mode */
+  :global(html:not(.dark)) .ws-header {
+    background:
+      linear-gradient(180deg, rgb(255 255 255), rgb(248 250 252)),
+      repeating-linear-gradient(90deg, transparent 0 18px, rgba(15, 23, 42, 0.04) 18px 19px);
     border-bottom-color: rgb(226 232 240);
   }
+  :global(html:not(.dark)) .ws-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .ws-cmd-bin { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .ws-cmd-sub { color: rgb(124 58 237); }
+  :global(html:not(.dark)) .ws-cmd-flag { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .ws-caret { background: rgb(5 150 105); }
+  :global(html:not(.dark)) .ws-stat-key { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .ws-stat-val { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .ws-stat-sep { background: rgb(203 213 225); }
 
-  :global(html:not(.dark)) .chrome-title {
+  /* deck — light mode */
+  :global(html:not(.dark)) .deck {
+    background:
+      linear-gradient(180deg, rgb(248 250 252), rgb(241 245 249));
+    border-bottom-color: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .deck-card {
+    --card-bg: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+    color: rgb(51 65 85);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  }
+  :global(html:not(.dark)) .deck-card:hover {
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  }
+  :global(html:not(.dark)) .card-shine {
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      rgba(15, 23, 42, 0.04) 45%,
+      rgba(15, 23, 42, 0.08) 50%,
+      rgba(15, 23, 42, 0.04) 55%,
+      transparent 70%
+    );
+    mix-blend-mode: multiply;
+  }
+  :global(html:not(.dark)) .card-status {
+    background: rgb(248 250 252);
+    border-color: rgb(226 232 240);
     color: rgb(71 85 105);
   }
-
-  :global(html:not(.dark)) .ide-tabs {
-    background: rgb(241 245 249);
-    border-bottom-color: rgb(226 232 240);
+  :global(html:not(.dark)) .card-status.is-active {
+    background: rgb(236 253 245);
+    border-color: rgb(5 150 105);
+    color: rgb(5 150 105);
   }
-
-  :global(html:not(.dark)) .tab-fade-right {
-    background: linear-gradient(90deg, transparent, rgb(241 245 249));
+  :global(html:not(.dark)) .card-status-dot { background: rgb(148 163 184); }
+  :global(html:not(.dark)) .card-status.is-active .card-status-dot {
+    background: rgb(5 150 105);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
   }
-
-  :global(html:not(.dark)) .tab {
-    color: rgb(100 116 139);
+  :global(html:not(.dark)) .card-name { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .card-version {
+    background: rgb(236 253 245);
+    border-color: rgb(167 243 208);
+    color: rgb(5 150 105);
   }
+  :global(html:not(.dark)) .version-glyph { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .card-stars { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .star-glyph { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .card-now {
+    background: rgb(236 253 245);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .now-dot {
+    background: rgb(5 150 105);
+    box-shadow: 0 0 6px rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .card-jump { color: rgb(148 163 184); }
+  :global(html:not(.dark)) .deck-card:hover .card-jump { color: rgb(5 150 105); }
 
-  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="0"],
-  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="1"],
-  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="2"] {
-    color: rgb(15 23 42);
-    background: rgb(255 255 255);
+  /* active state shadows in light mode use lower alpha so they don't
+     visually wash out against the bright background */
+  :global(html:not(.dark)) .tab-radio:nth-of-type(1):checked ~ .deck-row > .deck-card[data-tab-index="0"],
+  :global(html:not(.dark)) .tab-radio:nth-of-type(2):checked ~ .deck-row > .deck-card[data-tab-index="1"],
+  :global(html:not(.dark)) .tab-radio:nth-of-type(3):checked ~ .deck-row > .deck-card[data-tab-index="2"],
+  :global(html:not(.dark)) .tab-radio:nth-of-type(4):checked ~ .deck-row > .deck-card[data-tab-index="3"],
+  :global(html:not(.dark)) .tab-radio:nth-of-type(5):checked ~ .deck-row > .deck-card[data-tab-index="4"] {
+    background:
+      linear-gradient(180deg, rgb(255 255 255), rgb(248 250 252)),
+      radial-gradient(circle at 100% 0%, var(--lang-hue-soft), transparent 55%);
+    box-shadow:
+      0 0 0 1px var(--lang-hue),
+      0 14px 36px rgba(15, 23, 42, 0.1),
+      0 0 18px -2px var(--lang-hue-soft);
   }
 
   :global(html:not(.dark)) .ide-body { background: rgb(255 255 255); }
