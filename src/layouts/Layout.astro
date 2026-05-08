@@ -6,6 +6,7 @@ import ThemeToggle from '../components/ThemeToggle.astro';
 import BackToTop from '../components/portfolio/BackToTop.astro';
 import Icon from '../components/portfolio/Icon.astro';
 import SideRails from '../components/portfolio/SideRails.astro';
+import { profile } from '../data/portfolio';
 
 interface Props {
 	title: string;
@@ -15,6 +16,10 @@ const { title } = Astro.props;
 const rawBase = import.meta.env.BASE_URL || '/';
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
+
+// Favicon mirrors the same GitHub avatar used in About / Hero so updating
+// the GitHub profile picture instantly refreshes both surfaces.
+const faviconUrl = `https://github.com/${profile.githubUsername}.png?size=128`;
 ---
 
 <!doctype html>
@@ -23,7 +28,9 @@ const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
 		<meta charset="UTF-8" />
 		<meta name="description" content="Blog personal" />
 		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href={withBase('ste-avatar.svg')} />
+		<link rel="icon" type="image/png" href={faviconUrl} />
+		<link rel="apple-touch-icon" href={faviconUrl} />
+		<link rel="shortcut icon" type="image/svg+xml" href={withBase('ste-avatar.svg')} />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 		<script is:inline>
