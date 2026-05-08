@@ -1500,52 +1500,243 @@ const commitMsg = (post: any) => {
       radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.05) 1px, transparent 0);
   }
 
+  /* repository header */
+  :global(html:not(.dark)) .repo-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .repo-owner { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .repo-owner:hover { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .repo-slash { color: rgb(148 163 184); }
   :global(html:not(.dark)) .repo-name,
   :global(html:not(.dark)) .file-title,
   :global(html:not(.dark)) .readme-title,
   :global(html:not(.dark)) .file-name,
   :global(html:not(.dark)) .archive-title,
-  :global(html:not(.dark)) .sub-title,
-  :global(html:not(.dark)) .repo-tagline {
+  :global(html:not(.dark)) .sub-title {
     color: rgb(15 23 42);
   }
+  :global(html:not(.dark)) .repo-tagline { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .tagline-prefix { color: rgb(100 116 139); }
+  :global(html:not(.dark)) .repo-header { border-bottom-color: rgb(226 232 240); }
+  :global(html:not(.dark)) .repo-tag {
+    background: rgb(236 253 245);
+    border-color: rgb(167 243 208);
+    color: rgb(5 150 105);
+  }
 
+  /* action buttons */
+  :global(html:not(.dark)) .action-btn {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+    color: rgb(51 65 85);
+  }
+  :global(html:not(.dark)) .action-btn:hover {
+    background: rgb(248 250 252);
+    border-color: rgb(5 150 105);
+    color: rgb(15 23 42);
+  }
+  :global(html:not(.dark)) .action-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .action-val {
+    background: rgb(236 253 245);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .action-btn.primary {
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+    color: rgb(255 255 255);
+    border-color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .action-btn.primary .action-glyph { color: rgb(255 255 255); }
+  :global(html:not(.dark)) .action-btn.primary:hover {
+    background: linear-gradient(135deg, rgb(5 150 105), rgb(4 120 87));
+    color: rgb(255 255 255);
+  }
+
+  /* toolbar */
+  :global(html:not(.dark)) .repo-toolbar,
   :global(html:not(.dark)) .readme-frame,
   :global(html:not(.dark)) .file-list,
   :global(html:not(.dark)) .file-list-head,
-  :global(html:not(.dark)) .repo-toolbar,
   :global(html:not(.dark)) .subscribe {
     background: rgb(255 255 255);
     border-color: rgb(226 232 240);
   }
-
-  :global(html:not(.dark)) .file-row { border-bottom-color: rgb(241 245 249); }
-  :global(html:not(.dark)) .file-row:hover { background: rgb(248 250 252); }
-  :global(html:not(.dark)) .file-chrome,
-  :global(html:not(.dark)) .file-substats,
-  :global(html:not(.dark)) .sub-prompt { background: rgb(248 250 252); }
-
-  :global(html:not(.dark)) .file-list-head { background: rgb(248 250 252); }
-  :global(html:not(.dark)) .repo-tagline { color: rgb(51 65 85); }
-  :global(html:not(.dark)) .commit-msg,
-  :global(html:not(.dark)) .col-msg,
-  :global(html:not(.dark)) .readme-dek,
-  :global(html:not(.dark)) .sub-lede {
-    color: rgb(51 65 85);
-  }
-
-  :global(html:not(.dark)) .commit-sha { color: rgb(180 83 9); }
-  :global(html:not(.dark)) .file-fname { color: rgb(15 118 110); }
-  :global(html:not(.dark)) .ms-key,
-  :global(html:not(.dark)) .ah-cmd { color: rgb(124 58 237); }
-
   :global(html:not(.dark)) .branch-selector {
     background: rgb(236 253 245);
     border-color: rgb(167 243 208);
-    color: rgb(15 118 110);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .branch-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .branch-name { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .branch-caret { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .path-breadcrumb { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .bc-seg { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .bc-seg:hover { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .bc-seg.active { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .bc-sep { color: rgb(148 163 184); }
+  :global(html:not(.dark)) .search-box {
+    background: rgb(248 250 252);
+    border-color: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .search-box:focus-within {
+    border-color: rgb(5 150 105);
+    background: rgb(255 255 255);
+  }
+  :global(html:not(.dark)) .search-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .search-box input { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .search-box input::placeholder { color: rgb(148 163 184); }
+  :global(html:not(.dark)) .search-key {
+    background: rgb(255 255 255);
+    border-color: rgb(203 213 225);
+    color: rgb(71 85 105);
   }
 
-  :global(html:not(.dark)) .action-btn { background: rgb(255 255 255); border-color: rgb(226 232 240); color: rgb(51 65 85); }
+  /* filter chips */
+  :global(html:not(.dark)) .chip {
+    background: rgb(255 255 255);
+    border-color: rgb(226 232 240);
+    color: rgb(71 85 105);
+  }
+  :global(html:not(.dark)) .chip:hover {
+    color: rgb(15 23 42);
+    border-color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .chip-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .chip:not(.is-active) .chip-count {
+    background: rgb(236 253 245);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .chip.is-active {
+    color: rgb(255 255 255);
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+  }
+  :global(html:not(.dark)) .chip.is-active .chip-glyph { color: rgb(255 255 255); }
+
+  /* README (cover story) */
+  :global(html:not(.dark)) .file-chrome,
+  :global(html:not(.dark)) .file-substats,
+  :global(html:not(.dark)) .sub-prompt { background: rgb(248 250 252); }
+  :global(html:not(.dark)) .file-chrome { border-bottom-color: rgb(226 232 240); }
+  :global(html:not(.dark)) .pinned-badge {
+    background: rgb(254 252 232);
+    border-color: rgb(254 240 138);
+    color: rgb(133 77 14);
+  }
+  :global(html:not(.dark)) .chrome-action { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .chrome-sep { color: rgb(203 213 225); }
+  :global(html:not(.dark)) .file-substats { border-bottom-color: rgb(226 232 240); }
+  :global(html:not(.dark)) .sub-cell .sub-key { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .sub-cell .sub-val { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .sub-cell .sub-val.mono { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .meta-cat {
+    background: rgb(236 253 245);
+    border-color: rgb(167 243 208);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .meta-tag {
+    background: rgb(248 250 252);
+    border-color: rgb(226 232 240);
+    color: rgb(71 85 105);
+  }
+  :global(html:not(.dark)) .md-h1-prefix { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .md-cursor { background: rgb(5 150 105); }
+  :global(html:not(.dark)) .readme-dek { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .md-quote-prefix { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .readme-divider { color: rgb(148 163 184); }
+  :global(html:not(.dark)) .readme-cta {
+    background: rgb(236 253 245);
+    border-color: rgb(167 243 208);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .readme-body:hover .readme-cta {
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+    color: rgb(255 255 255);
+  }
+
+  /* archive (file browser) */
+  :global(html:not(.dark)) .archive-rule {
+    background: linear-gradient(90deg, rgb(203 213 225), transparent);
+  }
+  :global(html:not(.dark)) .ah-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .ah-cmd { color: rgb(124 58 237); }
+  :global(html:not(.dark)) .ah-flag { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .ah-arg { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .archive-stats { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .ar-cell { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .ar-sep { color: rgb(203 213 225); }
+  :global(html:not(.dark)) .file-list-head {
+    background: rgb(248 250 252);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .file-row { border-bottom-color: rgb(241 245 249); }
+  :global(html:not(.dark)) .file-row:hover { background: rgb(248 250 252); }
+  :global(html:not(.dark)) .file-fname { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .file-row:hover .file-fname { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .commit-msg,
+  :global(html:not(.dark)) .col-msg { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .commit-sha { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .col-size { color: rgb(100 116 139); }
+  :global(html:not(.dark)) .col-date { color: rgb(71 85 105); }
+  :global(html:not(.dark)) .row-arrow { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .file-list-empty {
+    background: rgb(248 250 252);
+    border-color: rgb(226 232 240);
+    color: rgb(71 85 105);
+  }
+  :global(html:not(.dark)) .empty-glyph { color: rgb(190 18 60); }
+
+  /* subscribe */
+  :global(html:not(.dark)) .sub-prompt { border-bottom-color: rgb(226 232 240); }
+  :global(html:not(.dark)) .prompt-user { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .prompt-at,
+  :global(html:not(.dark)) .prompt-colon { color: rgb(100 116 139); }
+  :global(html:not(.dark)) .prompt-host { color: rgb(15 118 110); }
+  :global(html:not(.dark)) .prompt-path { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .prompt-dollar { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .prompt-cmd { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .sub-lede { color: rgb(51 65 85); }
+  :global(html:not(.dark)) .sub-lede code {
+    background: rgb(236 253 245);
+    color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .sub-form {
+    background: rgb(248 250 252);
+    border-color: rgb(226 232 240);
+  }
+  :global(html:not(.dark)) .form-arrow { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .sub-form input { color: rgb(15 23 42); }
+  :global(html:not(.dark)) .sub-form input::placeholder { color: rgb(148 163 184); }
+  :global(html:not(.dark)) .sub-form button {
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+    color: rgb(255 255 255);
+  }
+  :global(html:not(.dark)) .btn-shortcut {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: rgb(255 255 255);
+  }
+
+  /* pagination */
+  :global(html:not(.dark)) .load-more {
+    background: rgb(255 255 255);
+    border-color: rgb(167 243 208);
+  }
+  :global(html:not(.dark)) .load-more:hover {
+    background: rgb(236 253 245);
+    border-color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .lm-glyph { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .lm-cmd { color: rgb(124 58 237); }
+  :global(html:not(.dark)) .lm-flag { color: rgb(180 83 9); }
+  :global(html:not(.dark)) .lm-arg { color: rgb(5 150 105); }
+
+  /* repo footer */
+  :global(html:not(.dark)) .repo-foot {
+    border-top-color: rgb(226 232 240);
+    color: rgb(100 116 139);
+  }
+  :global(html:not(.dark)) .foot-key { color: rgb(5 150 105); }
+  :global(html:not(.dark)) .foot-val { color: rgb(51 65 85); }
+
+  /* manifest tokens (kept for any reused selector) */
+  :global(html:not(.dark)) .ms-key { color: rgb(124 58 237); }
 
   /* ═══════════════════════  RESPONSIVE  ═══════════════════════ */
   @media (max-width: 900px) {
