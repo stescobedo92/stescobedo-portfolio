@@ -1,7 +1,7 @@
 ---
 import TypedText from './TypedText.astro';
 import Icon from './Icon.astro';
-import { profile, primarySkills } from '../../data/portfolio';
+import { profile } from '../../data/portfolio';
 
 const rawBase = import.meta.env.BASE_URL || '/';
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
@@ -17,34 +17,16 @@ const iconByNetwork = {
   StackOverflow: 'stackoverflow',
   X: 'x',
 } as const;
-
-// Stack matrix: 6 columns × 10 rows = 60 cells, confined to the right band of
-// the hero (around the portrait card). JS picks random cells to materialize a
-// skill icon from cdn.simpleicons.org for ~3 seconds.
-const MATRIX_COLS = 6;
-const MATRIX_ROWS = 10;
-const matrixCells = Array.from({ length: MATRIX_COLS * MATRIX_ROWS }, (_, i) => i);
-const skillIcons = primarySkills.map((s) => s.icon);
 ---
 
 <section class="hero" aria-label="Intro" id="hero">
   <a id="about" class="anchor-alias" aria-hidden="true"></a>
-  <!-- Animated grid background + live stack matrix -->
+  <!-- Animated grid background + falling code-rain canvas -->
   <div class="hero-bg" aria-hidden="true">
     <div class="grid"></div>
     <div class="aurora aurora-1"></div>
     <div class="aurora aurora-2"></div>
-    <div
-      class="skill-matrix"
-      id="skill-matrix"
-      data-cols={MATRIX_COLS}
-      data-rows={MATRIX_ROWS}
-      data-skills={skillIcons.join(',')}
-    >
-      {matrixCells.map((i) => (
-        <span class="skill-cell" data-cell-index={i}></span>
-      ))}
-    </div>
+    <canvas class="code-rain" id="code-rain"></canvas>
     <div class="cursor-glow" id="cursor-glow"></div>
   </div>
 
@@ -258,101 +240,189 @@ const skillIcons = primarySkills.map((s) => s.icon);
     hero.addEventListener('mousemove', onMove);
     hero.addEventListener('mouseleave', onLeave);
 
-    // ── Stack matrix: random skill icons materialize and dissolve ──
-    const matrix = document.getElementById('skill-matrix');
-    if (matrix && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const skills = (matrix.dataset.skills || '').split(',').filter(Boolean);
-      const cells = Array.from(matrix.querySelectorAll<HTMLElement>('.skill-cell'));
-      const html = document.documentElement;
-      const isDark = () => html.classList.contains('dark');
+    // ── Code rain: matrix-style stream of code tokens ──
+    const canvas = document.getElementById('code-rain') as HTMLCanvasElement | null;
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (canvas && !reduceMotion) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const html = document.documentElement;
+        const isDark = () => html.classList.contains('dark');
 
-      // Map our skill keys to simpleicons.org slugs (some differ).
-      // simpleicons CDN returns transparent monochrome SVGs and accepts a
-      // hex color in the path so we can tint to the site's emerald palette.
-      const SLUG_MAP: Record<string, string> = {
-        dotnet: 'dotnet',
-        rust: 'rust',
-        nodejs: 'nodedotjs',
-        python: 'python',
-        cpp: 'cplusplus',
-        typescript: 'typescript',
-        aws: 'amazonwebservices',
-        docker: 'docker',
-        githubactions: 'githubactions',
-        postgres: 'postgresql',
-        linux: 'linux',
-        git: 'git',
-      };
-      // emerald-400 (#6ee7b7) on dark, emerald-700 (#059669) on light
-      const iconUrl = (name: string, dark: boolean) => {
-        const slug = SLUG_MAP[name] ?? name;
-        const color = dark ? '6ee7b7' : '059669';
-        return `https://cdn.simpleicons.org/${slug}/${color}`;
-      };
+        // Token pools — what falls in each stream. Mix of code keywords,
+        // operators, hex digits and symbols so the rain reads as "code"
+        // rather than random characters.
+        const TOKENS = [
+          'fn', 'pub', 'let', 'mut', 'use', 'mod', 'impl', 'self',
+          'async', 'await', 'Ok', 'Err', 'Some', 'None', 'Self',
+          'const', '=>', '::', '&&', '||', '==', '!=', '<=', '>=',
+          '0xff', '0x0a', '0b01', 'true', 'false', 'null', 'void',
+          'try', 'pkg', 'lib', 'main', 'init', 'box', 'arc', 'mut',
+        ];
+        const SYMBOLS = ['{', '}', '[', ']', '(', ')', ';', ':', '?', '!', '_', '$', '#', '@', '<', '>', '+', '-', '*', '/'];
+        const HEX = '0123456789abcdef'.split('');
+        const HEAD_GLYPHS = ['▶', '█', '▌', '▎', '◆', '⬢'];
 
-      type Active = { skill: string; img: HTMLImageElement };
-      const active = new Map<HTMLElement, Active>();
-      const MAX_ACTIVE = 6;
-      const HOLD_MIN = 900;
-      const HOLD_MAX = 1700;
-      const FADE_OUT = 380;
+        const pickChar = (preferLong: boolean): string => {
+          const r = Math.random();
+          if (preferLong) {
+            if (r < 0.55) return TOKENS[Math.floor(Math.random() * TOKENS.length)];
+            if (r < 0.80) return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+            return HEX[Math.floor(Math.random() * HEX.length)];
+          } else {
+            if (r < 0.55) return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+            if (r < 0.85) return HEX[Math.floor(Math.random() * HEX.length)];
+            return TOKENS[Math.floor(Math.random() * TOKENS.length)];
+          }
+        };
 
-      // Pre-warm the cache by hitting each icon URL once for the current theme
-      const preload = (dark: boolean) => {
-        skills.forEach((s) => {
-          const img = new Image();
-          img.src = iconUrl(s, dark);
+        type Stream = {
+          col: number;       // column index
+          y: number;         // head row position (fractional)
+          speed: number;     // rows per frame
+          length: number;    // trail length in rows
+          chars: string[];   // pre-baked chars per trail position
+          churn: number;     // probability the trail mutates each frame
+          longBias: boolean; // prefers tokens vs symbols
+        };
+
+        const FONT_SIZE = 14;
+        const LINE_HEIGHT = 18;
+        let cols = 0;
+        let rows = 0;
+        let streams: Stream[] = [];
+        let W = 0;
+        let H = 0;
+
+        const newStream = (col: number, atTop = false): Stream => ({
+          col,
+          y: atTop ? -Math.random() * 12 : Math.random() * (rows + 12) - 12,
+          speed: 0.18 + Math.random() * 0.55,
+          length: 6 + Math.floor(Math.random() * 18),
+          chars: Array.from({ length: 24 }, () => pickChar(Math.random() < 0.45)),
+          churn: 0.05 + Math.random() * 0.25,
+          longBias: Math.random() < 0.45,
         });
-      };
-      preload(isDark());
 
-      const releaseCell = (cell: HTMLElement) => {
-        const entry = active.get(cell);
-        if (!entry) return;
-        cell.classList.remove('is-active');
-        window.setTimeout(() => {
-          entry.img.remove();
-          active.delete(cell);
-        }, FADE_OUT);
-      };
+        const resize = () => {
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const rect = canvas.getBoundingClientRect();
+          W = rect.width;
+          H = rect.height;
+          canvas.width = Math.max(1, Math.floor(W * dpr));
+          canvas.height = Math.max(1, Math.floor(H * dpr));
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          cols = Math.max(4, Math.floor(W / FONT_SIZE));
+          rows = Math.max(8, Math.floor(H / LINE_HEIGHT));
+          streams = Array.from({ length: cols }, (_, i) => newStream(i, false));
+        };
 
-      const activateRandom = () => {
-        if (active.size >= MAX_ACTIVE) return;
-        const free = cells.filter((c) => !active.has(c));
-        if (free.length === 0 || skills.length === 0) return;
-        const cell = free[Math.floor(Math.random() * free.length)];
-        const skill = skills[Math.floor(Math.random() * skills.length)];
-        const img = document.createElement('img');
-        img.src = iconUrl(skill, isDark());
-        img.alt = '';
-        img.loading = 'lazy';
-        img.decoding = 'async';
-        img.dataset.skill = skill;
-        cell.appendChild(img);
-        // Force reflow then add the active class for the fade-in to play
-        void cell.offsetWidth;
-        cell.classList.add('is-active');
-        active.set(cell, { skill, img });
-        const hold = HOLD_MIN + Math.random() * (HOLD_MAX - HOLD_MIN);
-        window.setTimeout(() => releaseCell(cell), hold);
-      };
+        resize();
+        const ro = new ResizeObserver(resize);
+        ro.observe(canvas);
 
-      // Cadence: a new icon every 160–340ms (faster turnover)
-      let timer: number;
-      const schedule = () => {
-        activateRandom();
-        timer = window.setTimeout(schedule, 160 + Math.random() * 180);
-      };
-      schedule();
+        const draw = () => {
+          const dark = isDark();
 
-      // Re-fetch active icons when the theme toggles
-      const themeObserver = new MutationObserver(() => {
-        const dark = isDark();
-        active.forEach(({ img, skill }) => {
-          img.src = iconUrl(skill, dark);
+          // 1. Translucent fill = trail-fade. Tinted to match the page bg.
+          ctx.fillStyle = dark ? 'rgba(13, 22, 42, 0.10)' : 'rgba(255, 255, 255, 0.14)';
+          ctx.fillRect(0, 0, W, H);
+
+          ctx.font = `500 ${FONT_SIZE}px 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace`;
+          ctx.textBaseline = 'top';
+
+          const HEAD_RGB = dark ? '220, 252, 231' : '6, 95, 70';
+          const TAIL_RGB = dark ? '110, 231, 183' : '16, 185, 129';
+
+          for (const s of streams) {
+            // Occasional churn so trail chars mutate as they fall
+            if (Math.random() < s.churn) {
+              const idx = Math.floor(Math.random() * s.length);
+              s.chars[idx] = pickChar(s.longBias);
+            }
+
+            for (let i = 0; i < s.length; i++) {
+              const rowY = s.y - i;
+              if (rowY < -1 || rowY > rows + 1) continue;
+              const x = s.col * FONT_SIZE;
+              const y = rowY * LINE_HEIGHT;
+
+              if (i === 0) {
+                // Head: bright + slightly larger glyph
+                const headChar = Math.random() < 0.18
+                  ? HEAD_GLYPHS[Math.floor(Math.random() * HEAD_GLYPHS.length)]
+                  : s.chars[0];
+                ctx.fillStyle = `rgba(${HEAD_RGB}, 0.95)`;
+                ctx.shadowColor = `rgba(${TAIL_RGB}, 0.6)`;
+                ctx.shadowBlur = 6;
+                ctx.fillText(headChar, x, y);
+                ctx.shadowBlur = 0;
+              } else {
+                // Trail: progressively dimmer, slightly transparent
+                const t = 1 - i / s.length;
+                const alpha = Math.max(0, t * 0.65);
+                ctx.fillStyle = `rgba(${TAIL_RGB}, ${alpha})`;
+                ctx.fillText(s.chars[i] ?? '·', x, y);
+              }
+            }
+
+            s.y += s.speed;
+
+            // Reset stream once the trail clears the bottom
+            if (s.y - s.length > rows + 4) {
+              if (Math.random() < 0.4) {
+                streams[s.col] = newStream(s.col, true);
+              }
+            }
+          }
+        };
+
+        // Throttle to ~24 fps via rAF + timestamp guard
+        const TARGET_FPS = 24;
+        const FRAME_INTERVAL = 1000 / TARGET_FPS;
+        let lastFrame = 0;
+        let rafId = 0;
+        let running = false;
+
+        const loop = (now: number) => {
+          if (!running) return;
+          if (now - lastFrame >= FRAME_INTERVAL) {
+            draw();
+            lastFrame = now;
+          }
+          rafId = requestAnimationFrame(loop);
+        };
+
+        const start = () => {
+          if (running) return;
+          running = true;
+          rafId = requestAnimationFrame(loop);
+        };
+        const stop = () => {
+          running = false;
+          cancelAnimationFrame(rafId);
+        };
+
+        // Pause when the hero scrolls out of view to spare battery
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) start();
+              else stop();
+            }
+          },
+          { threshold: 0 },
+        );
+        io.observe(hero);
+
+        // Re-paint immediately on theme toggle so the fade tint follows the page bg
+        const themeObserver = new MutationObserver(() => {
+          // One transparent fill in the new theme erases the lingering opposite tint
+          ctx.fillStyle = isDark() ? 'rgba(13, 22, 42, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+          ctx.fillRect(0, 0, W, H);
         });
-      });
-      themeObserver.observe(html, { attributes: true, attributeFilter: ['class'] });
+        themeObserver.observe(html, { attributes: true, attributeFilter: ['class'] });
+      }
     }
 
     // Live time clock
@@ -831,95 +901,81 @@ const skillIcons = primarySkills.map((s) => s.icon);
     will-change: transform, opacity;
   }
 
-  /* ─────────  STACK MATRIX (live skill icons)  ───────── */
-  /* Confined to the right band of the hero — the area around the portrait
-     card — and a single radial mask carves out the card itself so icons never
-     overlay the photo or its caption. */
-  .skill-matrix {
+  /* ─────────  CODE RAIN (Matrix-style canvas)  ─────────
+     Lives in the right band of the hero, around the portrait. A radial
+     mask carves out the card itself so the rain never falls onto the
+     photo or caption. JS draws code tokens at ~24 fps in canvas. */
+  .code-rain {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
-    width: clamp(320px, 48%, 620px);
+    width: clamp(320px, 48%, 640px);
+    height: 100%;
     z-index: 0;
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    grid-template-rows: repeat(10, 1fr);
     pointer-events: none;
-    -webkit-mask-image: radial-gradient(
-      ellipse 52% 36% at 30% 30%,
-      transparent 0%,
-      transparent 80%,
-      black 100%
-    );
-            mask-image: radial-gradient(
-      ellipse 52% 36% at 30% 30%,
-      transparent 0%,
-      transparent 80%,
-      black 100%
-    );
-  }
-
-  .skill-cell {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Subtle dotted intersection so empty cells still feel like a grid */
-  }
-
-  .skill-cell::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    background: rgba(110, 231, 183, 0.14);
-    transform: translate(50%, -50%);
-  }
-
-  .skill-cell img {
-    width: 22%;
-    aspect-ratio: 1;
-    height: auto;
-    max-width: 16px;
-    opacity: 0;
-    transform: scale(0.5) rotate(-8deg);
-    /* simpleicons returns transparent monochrome SVGs already tinted via the
-       URL color param; the soft glow below adds depth without recoloring. */
-    filter: drop-shadow(0 0 5px rgba(110, 231, 183, 0.4));
-    transition:
-      opacity 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      filter 380ms ease;
-  }
-
-  .skill-cell.is-active img {
-    opacity: 0.45;
-    transform: scale(1) rotate(0deg);
-  }
-
-  /* a soft halo behind each active icon (sized to the smaller icon) */
-  .skill-cell.is-active::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 32%;
-    max-width: 28px;
-    aspect-ratio: 1;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(110, 231, 183, 0.1), transparent 70%);
-    animation: cell-halo 2s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  @keyframes cell-halo {
-    0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.95); }
-    50%      { opacity: 0.55; transform: translate(-50%, -50%) scale(1.08); }
+    opacity: 0.62;
+    -webkit-mask-image:
+      /* carve out the portrait card area */
+      radial-gradient(
+        ellipse 50% 36% at 28% 30%,
+        transparent 0%,
+        transparent 78%,
+        black 100%
+      ),
+      /* fade the edges so streams don't terminate sharply */
+      linear-gradient(
+        to right,
+        transparent 0%,
+        black 12%,
+        black 88%,
+        transparent 100%
+      );
+            mask-image:
+      radial-gradient(
+        ellipse 50% 36% at 28% 30%,
+        transparent 0%,
+        transparent 78%,
+        black 100%
+      ),
+      linear-gradient(
+        to right,
+        transparent 0%,
+        black 12%,
+        black 88%,
+        transparent 100%
+      );
+    -webkit-mask-composite: source-in;
+            mask-composite: intersect;
+    /* Vertical fade so heads emerge softly at the top and dissolve at the bottom */
+    -webkit-mask-image:
+      radial-gradient(
+        ellipse 50% 36% at 28% 30%,
+        transparent 0%,
+        transparent 78%,
+        black 100%
+      ),
+      linear-gradient(
+        180deg,
+        transparent 0%,
+        black 8%,
+        black 90%,
+        transparent 100%
+      );
+            mask-image:
+      radial-gradient(
+        ellipse 50% 36% at 28% 30%,
+        transparent 0%,
+        transparent 78%,
+        black 100%
+      ),
+      linear-gradient(
+        180deg,
+        transparent 0%,
+        black 8%,
+        black 90%,
+        transparent 100%
+      );
   }
 
   /* COPY */
@@ -1456,18 +1512,10 @@ const skillIcons = primarySkills.map((s) => s.icon);
     background: radial-gradient(circle, rgba(16, 185, 129, 0.16), transparent 65%);
   }
 
-  /* skill matrix in light mode */
-  :global(html:not(.dark)) .skill-cell::before {
-    background: rgba(15, 23, 42, 0.18);
-  }
-  :global(html:not(.dark)) .skill-cell img {
-    filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.28));
-  }
-  :global(html:not(.dark)) .skill-cell.is-active img {
-    opacity: 0.55;
-  }
-  :global(html:not(.dark)) .skill-cell.is-active::after {
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.1), transparent 70%);
+  /* code rain in light mode — slightly higher opacity so the muted
+     emerald characters still register against white */
+  :global(html:not(.dark)) .code-rain {
+    opacity: 0.72;
   }
 
   /* portrait overlays in light mode (less aggressive blending) */
