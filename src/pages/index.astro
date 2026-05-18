@@ -8,11 +8,13 @@ import Education from '../components/portfolio/Education.astro';
 import Skills from '../components/portfolio/Skills.astro';
 import PostsPreview from '../components/portfolio/PostsPreview.astro';
 import Contact from '../components/portfolio/Contact.astro';
+import { entrySlug } from '../lib/content';
 
 const posts = (await getCollection('blog'))
 	.filter((post) => !post.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
-	.slice(0, 4);
+	.slice(0, 4)
+	.map((post) => ({ ...post, slug: entrySlug(post) }));
 ---
 
 <Layout title="Sergio Triana | Software Engineer">

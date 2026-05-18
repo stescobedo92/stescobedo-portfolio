@@ -2,18 +2,19 @@
 import Section from './Section.astro';
 import Icon from './Icon.astro';
 import { projects, profile } from '../../data/portfolio';
+import { getPinnedReposMetadata } from '../../lib/github';
 
 const rawBase = import.meta.env.BASE_URL || '/';
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
 
-const featured = projects.filter((project) => project.featured);
-const otherProjects = projects.filter((project) => !project.featured);
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const padN = (n: number, w: number) => String(n).padStart(w, ' ');
+const formatCount = (value: number | null | undefined) =>
+  typeof value === 'number' ? value.toLocaleString('en-US') : '—';
 
 // ─────────────────────────  LANGUAGE METADATA  ─────────────────────────
-type LangKey = 'rust' | 'cpp' | 'go' | 'csharp' | 'typescript' | 'python' | 'generic';
+type LangKey = 'rust' | 'cpp' | 'go' | 'csharp' | 'typescript' | 'javascript' | 'python' | 'generic';
 
 type LangMeta = {
   key: LangKey;
@@ -32,6 +33,7 @@ const LANGS: Record<LangKey, LangMeta> = {
   go:         { key: 'go',         label: 'Go',         ext: 'go',   glyph: '◎', hue: '125 211 252',  hueSoft: '125 211 252',  comment: '//', docComment: '//' },
   csharp:     { key: 'csharp',     label: 'C#',         ext: 'cs',   glyph: '◈', hue: '167 139 250',  hueSoft: '167 139 250',  comment: '//', docComment: '///' },
   typescript: { key: 'typescript', label: 'TypeScript', ext: 'ts',   glyph: '◇', hue: '96 165 250',   hueSoft: '96 165 250',   comment: '//', docComment: '/**' },
+  javascript: { key: 'javascript', label: 'JavaScript', ext: 'js',   glyph: '◇', hue: '250 204 21',   hueSoft: '250 204 21',   comment: '//', docComment: '/**' },
   python:     { key: 'python',     label: 'Python',     ext: 'py',   glyph: '○', hue: '252 211 77',   hueSoft: '252 211 77',   comment: '#',  docComment: '"""' },
   generic:    { key: 'generic',    label: 'Code',       ext: 'src',  glyph: '◌', hue: '110 231 183',  hueSoft: '110 231 183',  comment: '//', docComment: '//' },
 };
@@ -43,6 +45,7 @@ const detectLang = (tech: string[]): LangMeta => {
   if (norm.some((t) => t === 'go' || t === 'golang')) return LANGS.go;
   if (norm.some((t) => t === '.net' || t.includes('c#'))) return LANGS.csharp;
   if (norm.some((t) => t === 'typescript' || t === 'ts')) return LANGS.typescript;
+  if (norm.some((t) => t === 'javascript' || t === 'js')) return LANGS.javascript;
   if (norm.some((t) => t === 'python')) return LANGS.python;
   return LANGS.generic;
 };
@@ -54,37 +57,40 @@ const fileSlug = (name: string) =>
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 
-// Deterministic mock metrics derived from the project name so they stay stable across builds
-const hashSeed = (s: string) => {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return h;
-};
+const pinnedRepos = await getPinnedReposMetadata(profile.githubUsername, profile.pinnedRepos);
+const projectByRepo = new Map(projects.flatMap((project) => (project.githubRepo ? [[project.githubRepo, project]] : [])));
+const pinnedProjects = pinnedRepos.map((repo) => {
+  const local = projectByRepo.get(repo.fullName);
+  return {
+    name: repo.name,
+    description: repo.description,
+    highlights: local?.highlights ?? repo.metadata.languages.slice(0, 3).map((language) => `${language} codebase`),
+    tech: repo.metadata.languages.length > 0 ? repo.metadata.languages : local?.tech ?? ['Code'],
+    github: repo.htmlUrl,
+    githubRepo: repo.fullName,
+    demo: repo.homepage ?? local?.demo,
+    image: local?.image ?? '',
+    cover: local?.cover,
+    featured: true,
+    active: local?.active ?? false,
+    metadata: repo.metadata,
+  };
+});
+const featured = pinnedProjects;
+const otherProjects = pinnedProjects.slice(featured.length);
 
-const mockMetrics = (project: { name: string; active?: boolean }) => {
-  const seed = hashSeed(project.name);
-  const stars = (seed % 90) + 12;          // 12 - 101
-  const lines = ((seed >>> 8) % 4500) + 320; // 320 - 4819
-  const commits = ((seed >>> 16) % 240) + 22; // 22 - 261
-  return { stars, lines, commits };
-};
+type ProjectLike = typeof pinnedProjects[number];
+const metadataFor = (project: ProjectLike) => project.metadata;
 
-const mockVersion = (project: { name: string }) => {
-  const seed = hashSeed(project.name);
-  const major = (seed >>> 24) % 3;          // 0 - 2
-  const minor = (seed >>> 12) & 0x0f;       // 0 - 15
-  const patch = seed & 0x1f;                // 0 - 31
-  return `${major}.${minor}.${patch}`;
-};
+const releaseLabel = (release: string | null | undefined) => release ?? 'no release';
+const repoLanguagesFor = (project: ProjectLike, metadata: ReturnType<typeof metadataFor>) =>
+  metadata.languages.length > 0 ? metadata.languages : project.tech;
 
 // Build a "code preview" as an array of lines, each being an array of tokens.
 type Token = { t: 'kw' | 'ty' | 'str' | 'cmt' | 'fn' | 'attr' | 'punct' | 'ident' | 'num' | 'space' | 'hash'; v: string };
 type Line = Token[];
 
-const renderRust = (project: typeof projects[number]): Line[] => {
+const renderRust = (project: ProjectLike): Line[] => {
   const slug = fileSlug(project.name);
   const struct = project.name.split(/[\s\-_]+/).map((w) => w[0]?.toUpperCase() + w.slice(1).toLowerCase()).join('');
   const isActive = project.active === true;
@@ -116,7 +122,7 @@ const renderRust = (project: typeof projects[number]): Line[] => {
   return lines;
 };
 
-const renderCpp = (project: typeof projects[number]): Line[] => {
+const renderCpp = (project: ProjectLike): Line[] => {
   const struct = project.name.split(/[\s\-_]+/).map((w) => w[0]?.toUpperCase() + w.slice(1).toLowerCase()).join('');
   const lines: Line[] = [];
   lines.push([{ t: 'cmt', v: `// ${project.name} — ${project.tech.join(' / ')}` }]);
@@ -138,7 +144,7 @@ const renderCpp = (project: typeof projects[number]): Line[] => {
   return lines;
 };
 
-const renderGo = (project: typeof projects[number]): Line[] => {
+const renderGo = (project: ProjectLike): Line[] => {
   const lines: Line[] = [];
   const pkg = fileSlug(project.name);
   lines.push([{ t: 'cmt', v: `// Package ${pkg}` }]);
@@ -161,25 +167,41 @@ const renderGo = (project: typeof projects[number]): Line[] => {
   return lines;
 };
 
-const renderForLang = (project: typeof projects[number], lang: LangMeta): Line[] => {
+const renderGeneric = (project: ProjectLike, lang: LangMeta): Line[] => {
+  const symbol = fileSlug(project.name);
+  const lines: Line[] = [];
+  lines.push([{ t: 'cmt', v: `${lang.comment} ${project.name} — ${project.tech.join(' / ')}` }]);
+  lines.push([{ t: 'cmt', v: `${lang.comment} ${project.description}` }]);
+  lines.push([]);
+  lines.push([{ t: 'kw', v: 'const' }, { t: 'space', v: ' ' }, { t: 'ident', v: symbol }, { t: 'space', v: ' ' }, { t: 'punct', v: '=' }, { t: 'space', v: ' ' }, { t: 'punct', v: '{' }]);
+  lines.push([{ t: 'space', v: '  ' }, { t: 'ident', v: 'repo' }, { t: 'punct', v: ':' }, { t: 'space', v: ' ' }, { t: 'str', v: `"${project.githubRepo ?? project.name}"` }, { t: 'punct', v: ',' }]);
+  lines.push([{ t: 'space', v: '  ' }, { t: 'ident', v: 'languages' }, { t: 'punct', v: ':' }, { t: 'space', v: ' ' }, { t: 'str', v: `[${project.tech.slice(0, 4).map((tech) => `"${tech}"`).join(', ')}]` }, { t: 'punct', v: ',' }]);
+  lines.push([{ t: 'space', v: '  ' }, { t: 'fn', v: 'open' }, { t: 'punct', v: '()' }, { t: 'space', v: ' ' }, { t: 'punct', v: '{' }]);
+  lines.push([{ t: 'space', v: '    ' }, { t: 'kw', v: 'return' }, { t: 'space', v: ' ' }, { t: 'ident', v: 'source' }, { t: 'punct', v: '(' }, { t: 'str', v: `"${project.github}"` }, { t: 'punct', v: ');' }]);
+  lines.push([{ t: 'space', v: '  ' }, { t: 'punct', v: '}' }]);
+  lines.push([{ t: 'punct', v: '};' }]);
+  return lines;
+};
+
+const renderForLang = (project: ProjectLike, lang: LangMeta): Line[] => {
   if (lang.key === 'rust') return renderRust(project);
   if (lang.key === 'cpp') return renderCpp(project);
   if (lang.key === 'go') return renderGo(project);
-  return renderRust(project); // sensible default
+  return renderGeneric(project, lang);
 };
 
 // Pre-compute previews for all featured projects so we can render them once
 const featuredViews = featured.map((project, index) => {
-  const lang = detectLang(project.tech);
+  const metadata = metadataFor(project);
+  const languages = repoLanguagesFor(project, metadata);
+  const lang = detectLang(languages);
   const lines = renderForLang(project, lang);
-  const metrics = mockMetrics(project);
-  const version = mockVersion(project);
   return {
     project,
     lang,
     lines,
-    metrics,
-    version,
+    metadata,
+    languages,
     tabId: `tab-${index}`,
     panelId: `panel-${index}`,
     isActive: index === 0,
@@ -187,16 +209,17 @@ const featuredViews = featured.map((project, index) => {
   };
 });
 
-// For other projects, mock metrics + cargo-style sections
+// For other projects, cargo-style sections backed by GitHub metadata
 const otherViews = otherProjects.map((project, index) => {
-  const lang = detectLang(project.tech);
-  const metrics = mockMetrics(project);
-  const version = mockVersion(project);
-  return { project, lang, metrics, version, num: index + 1 };
+  const metadata = metadataFor(project);
+  const languages = repoLanguagesFor(project, metadata);
+  const lang = detectLang(languages);
+  return { project, lang, metadata, languages, num: index + 1, isRemote: false };
 });
+const manifestViews = otherViews;
 ---
 
-<Section title="Selected Work" id="projects">
+<Section title="Featured Work" titleKey="sections.projects" id="projects">
   <!-- ────────  IDE WORKSPACE (featured)  ──────── -->
   <div class="ide" role="region" aria-label="Featured projects, displayed as an IDE workspace">
     <!-- Window chrome -->
@@ -232,7 +255,9 @@ const otherViews = otherProjects.map((project, index) => {
             style={`--lang-hue: rgb(${view.lang.hue});`}
           >
             <span class="tab-glyph" aria-hidden="true">{view.lang.glyph}</span>
-            <span class="tab-name">{view.fileName}</span>
+            <a class="tab-name tab-link" href={view.project.github} target="_blank" rel="noopener noreferrer" aria-label={`${view.project.name} repository`}>
+              {view.fileName}
+            </a>
             <span class="tab-dot" aria-hidden="true"></span>
             <span class="tab-close" aria-hidden="true">×</span>
           </label>
@@ -261,7 +286,12 @@ const otherViews = otherProjects.map((project, index) => {
             <span class="bc-sep" aria-hidden="true">›</span>
             <span class="bc-seg">selected-work</span>
             <span class="bc-sep" aria-hidden="true">›</span>
-            <span class="bc-seg active"><span class="bc-icon">{view.lang.glyph}</span> {view.fileName}</span>
+            <span class="bc-seg active">
+              <span class="bc-icon">{view.lang.glyph}</span>
+              <a class="bc-file-link" href={view.project.github} target="_blank" rel="noopener noreferrer">
+                {view.fileName}
+              </a>
+            </span>
             <span class="bc-spacer"></span>
             <span class="bc-action" aria-hidden="true">⌃ ⌘ → next</span>
           </nav>
@@ -298,25 +328,25 @@ const otherViews = otherProjects.map((project, index) => {
               </div>
 
               <div class="meta-section">
-                <span class="meta-eyebrow">stats</span>
+                <span class="meta-eyebrow" data-i18n="projects.stats">stats</span>
                 <div class="meta-stats">
                   <div class="stat-cell">
-                    <span class="stat-num">{view.metrics.stars}</span>
-                    <span class="stat-key">stars</span>
+                    <span class="stat-num" data-repo-stars={view.project.githubRepo}>{formatCount(view.metadata.stars)}</span>
+                    <span class="stat-key" data-i18n="projects.stars">stars</span>
                   </div>
                   <div class="stat-cell">
-                    <span class="stat-num">{view.metrics.commits}</span>
-                    <span class="stat-key">commits</span>
+                    <span class="stat-num" data-repo-commits={view.project.githubRepo}>{formatCount(view.metadata.commits)}</span>
+                    <span class="stat-key" data-i18n="projects.commits">commits</span>
                   </div>
                   <div class="stat-cell">
-                    <span class="stat-num">{view.metrics.lines.toLocaleString()}</span>
-                    <span class="stat-key">loc</span>
+                    <span class="stat-num branch-name" data-repo-branch={view.project.githubRepo}>{view.metadata.defaultBranch ?? '—'}</span>
+                    <span class="stat-key" data-i18n="projects.branch">branch</span>
                   </div>
                 </div>
               </div>
 
               <div class="meta-section">
-                <span class="meta-eyebrow">stack</span>
+                <span class="meta-eyebrow" data-i18n="projects.stack">stack</span>
                 <ul class="meta-tech">
                   {view.project.tech.map((tech) => (
                     <li class="tech-pill">{tech}</li>
@@ -325,7 +355,7 @@ const otherViews = otherProjects.map((project, index) => {
               </div>
 
               <div class="meta-section">
-                <span class="meta-eyebrow">highlights</span>
+                <span class="meta-eyebrow" data-i18n="projects.highlights">highlights</span>
                 <ul class="meta-highlights">
                   {view.project.highlights.map((h, i) => (
                     <li>
@@ -339,7 +369,7 @@ const otherViews = otherProjects.map((project, index) => {
               <div class="meta-actions">
                 <a class="action primary" href={view.project.github} target="_blank" rel="noopener noreferrer">
                   <Icon name="github" class="h-4 w-4" />
-                  <span>Source</span>
+                  <span data-i18n="projects.source">Source</span>
                   <span class="action-shortcut" aria-hidden="true">↗</span>
                 </a>
                 {view.project.demo && (
@@ -356,14 +386,16 @@ const otherViews = otherProjects.map((project, index) => {
           <div class="statusbar" aria-hidden="true">
             <span class="sb-cell sb-branch">
               <span class="sb-glyph">⎇</span>
-              <span>main</span>
+              <span data-repo-branch={view.project.githubRepo}>{view.metadata.defaultBranch ?? '—'}</span>
             </span>
             <span class="sb-cell">{view.lang.label}</span>
             <span class="sb-cell">UTF-8</span>
             <span class="sb-cell">LF</span>
             <span class="sb-cell">spaces: 4</span>
             <span class="sb-spacer"></span>
-            <span class="sb-cell">v{view.version}</span>
+            <span class={`sb-cell release-cell ${view.metadata.release ? '' : 'is-empty'}`} data-repo-release={view.project.githubRepo}>
+              {releaseLabel(view.metadata.release)}
+            </span>
             <span class={`sb-cell sb-status ${view.project.active ? 'is-active' : ''}`}>
               <span class="sb-dot"></span>
               <span>{view.project.active ? 'active' : 'shipped'}</span>
@@ -375,246 +407,117 @@ const otherViews = otherProjects.map((project, index) => {
     </div>
   </div>
 
-  <!-- ────────  WORKSPACE (other projects as Cargo manifests)  ──────── -->
-  <div class="workspace" data-github-user={profile.githubUsername}>
-    <header class="workspace-head">
-      <span class="ws-glyph" aria-hidden="true">⌗</span>
-      <div class="ws-title">
-        <h3>workspace.toml</h3>
-        <p>more crates from the same author</p>
-      </div>
-      <span class="ws-rule" aria-hidden="true"></span>
-      <a class="ws-link" href={withBase('blog')}>view archive →</a>
-    </header>
+  {manifestViews.length > 0 && (
+    <div class="workspace" data-github-user={profile.githubUsername}>
+      <header class="workspace-head">
+        <span class="ws-glyph" aria-hidden="true">⌗</span>
+        <div class="ws-title">
+          <h3>workspace.toml</h3>
+          <p data-i18n="projects.moreCrates">more crates from the same author</p>
+        </div>
+        <span class="ws-rule" aria-hidden="true"></span>
+        <a class="ws-link" href={withBase('blog')} data-i18n="projects.viewArchive">view archive →</a>
+      </header>
 
-    <ul class="manifest-grid" id="project-grid">
-      {otherViews.map((view) => (
-        <li
-          class="manifest"
-          data-github-repo={view.project.githubRepo}
-          data-repo-name={view.project.githubRepo?.split('/')[1] ?? view.project.name}
-          style={`--lang-hue: rgb(${view.lang.hue}); --lang-hue-soft: rgba(${view.lang.hueSoft} / 0.18);`}
-        >
-          <article class="manifest-card">
-            <span class="manifest-rail" aria-hidden="true"></span>
+      <ul class="manifest-grid" id="project-grid">
+        {manifestViews.map((view) => (
+          <li
+            class={`manifest ${view.isRemote ? 'is-remote' : ''}`}
+            hidden={view.isRemote}
+            data-github-repo={view.project.githubRepo}
+            data-repo-name={view.project.githubRepo?.split('/')[1] ?? view.project.name}
+            style={`--lang-hue: rgb(${view.lang.hue}); --lang-hue-soft: rgba(${view.lang.hueSoft} / 0.18);`}
+          >
+            <article class="manifest-card">
+              <span class="manifest-rail" aria-hidden="true"></span>
 
-            <header class="manifest-head">
-              <span class="manifest-num">{pad2(view.num)}</span>
-              <span class="manifest-glyph" aria-hidden="true">{view.lang.glyph}</span>
-              <span class="manifest-lang">{view.lang.label}</span>
-              <span class="manifest-spacer"></span>
-              <span class="manifest-version">v{view.version}</span>
-            </header>
+              <header class="manifest-head">
+                <span class="manifest-num">{pad2(view.num)}</span>
+                <span class="manifest-glyph" aria-hidden="true">{view.lang.glyph}</span>
+                <span class="manifest-lang">{view.lang.label}</span>
+                <span class="manifest-spacer"></span>
+                <span class={`manifest-version ${view.metadata.release ? '' : 'is-empty'}`} data-repo-release={view.project.githubRepo}>
+                  {releaseLabel(view.metadata.release)}
+                </span>
+              </header>
 
-            <div class="manifest-section">
-              <span class="ms-key">[package]</span>
-              <ul class="ms-rows">
-                <li>
-                  <span class="ms-prop">name</span>
-                  <span class="ms-eq">=</span>
-                  <a class="ms-val ms-link" href={view.project.github} target="_blank" rel="noopener noreferrer">
-                    "{view.project.name}"
-                  </a>
-                </li>
-                <li>
-                  <span class="ms-prop">authors</span>
-                  <span class="ms-eq">=</span>
-                  <span class="ms-val ms-arr">["stescobedo92"]</span>
-                </li>
-                <li>
-                  <span class="ms-prop">license</span>
-                  <span class="ms-eq">=</span>
-                  <span class="ms-val">"MIT"</span>
-                </li>
-              </ul>
-            </div>
-
-            <div class="manifest-section manifest-desc">
-              <span class="ms-key">[description]</span>
-              <p class="repo-description">{view.project.description}</p>
-            </div>
-
-            <div class="manifest-section">
-              <span class="ms-key">[dependencies]</span>
-              <ul class="repo-languages" aria-label={`${view.project.name} technologies`}>
-                {view.project.tech.slice(0, 6).map((tech) => (
-                  <li><span class="dep-plus" aria-hidden="true">+</span> {tech}</li>
-                ))}
-              </ul>
-            </div>
-
-            <footer class="manifest-foot">
-              <span class="foot-stats">
-                <span class="foot-stat">★ {view.metrics.stars}</span>
-                <span class="foot-stat">⎇ {view.metrics.commits}</span>
-              </span>
-              <span class="foot-spacer"></span>
-              <div class="foot-links card-links">
-                <a class="repo-title" href={view.project.github} target="_blank" rel="noopener noreferrer" aria-label={`${view.project.name} on GitHub`}>
-                  <Icon name="github" class="h-4 w-4" />
-                  <span class="foot-label">source</span>
-                </a>
-                {view.project.demo && (
-                  <a href={view.project.demo} target="_blank" rel="noopener noreferrer" aria-label={`${view.project.name} demo`}>
-                    <Icon name="external" class="h-4 w-4" />
-                    <span class="foot-label">live</span>
-                  </a>
-                )}
-                {view.project.active && <span class="active-dot">● active</span>}
+              <div class="manifest-section">
+                <span class="ms-key">[package]</span>
+                <ul class="ms-rows">
+                  <li>
+                    <span class="ms-prop">name</span>
+                    <span class="ms-eq">=</span>
+                    <a class="ms-val ms-link" href={view.project.github} target="_blank" rel="noopener noreferrer">
+                      "{view.project.name}"
+                    </a>
+                  </li>
+                  <li>
+                    <span class="ms-prop">authors</span>
+                    <span class="ms-eq">=</span>
+                    <span class="ms-val ms-arr">["stescobedo92"]</span>
+                  </li>
+                  <li>
+                    <span class="ms-prop">license</span>
+                    <span class="ms-eq">=</span>
+                    <span class="ms-val">"MIT"</span>
+                  </li>
+                </ul>
               </div>
-            </footer>
 
-            <span class="card-num" hidden></span>
-          </article>
-        </li>
-      ))}
-    </ul>
+              <div class="manifest-section manifest-desc">
+                <span class="ms-key">[description]</span>
+                <p class="repo-description">{view.project.description}</p>
+              </div>
 
-    <div class="workspace-footer">
-      <button id="toggle-projects" class="show-more" type="button" aria-expanded="false">
-        <span class="dash" aria-hidden="true"></span>
-        <span>cargo search --remote</span>
-        <span class="dash" aria-hidden="true"></span>
-      </button>
+              <div class="manifest-section">
+                <span class="ms-key">[dependencies]</span>
+                <ul class="repo-languages" aria-label={`${view.project.name} technologies`}>
+                  {view.languages.slice(0, 6).map((tech) => (
+                    <li><span class="dep-plus" aria-hidden="true">+</span> {tech}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <footer class="manifest-foot">
+                <span class="foot-stats">
+                  <span class="foot-stat">★ <span data-repo-stars={view.project.githubRepo}>{formatCount(view.metadata.stars)}</span></span>
+                  <span class="foot-stat">⎇ <span data-repo-commits={view.project.githubRepo}>{formatCount(view.metadata.commits)}</span></span>
+                </span>
+                <span class="foot-spacer"></span>
+                <div class="foot-links card-links">
+                  <a class="repo-title" href={view.project.github} target="_blank" rel="noopener noreferrer" aria-label={`${view.project.name} on GitHub`}>
+                    <Icon name="github" class="h-4 w-4" />
+                    <span class="foot-label" data-i18n="projects.sourceLower">source</span>
+                  </a>
+                  {view.project.demo && (
+                    <a href={view.project.demo} target="_blank" rel="noopener noreferrer" aria-label={`${view.project.name} demo`}>
+                      <Icon name="external" class="h-4 w-4" />
+                      <span class="foot-label">live</span>
+                    </a>
+                  )}
+                  {'active' in view.project && view.project.active && <span class="active-dot">● active</span>}
+                </div>
+              </footer>
+
+              <span class="card-num" hidden></span>
+            </article>
+          </li>
+        ))}
+      </ul>
+
+      <div class="workspace-footer">
+        <button id="toggle-projects" class="show-more" type="button" aria-expanded="false">
+          <span class="dash" aria-hidden="true"></span>
+          <span data-i18n="projects.cargoSearch">cargo search --remote</span>
+          <span class="dash" aria-hidden="true"></span>
+        </button>
+      </div>
     </div>
-  </div>
+  )}
 </Section>
 
 <script>
-  type GitHubRepo = {
-    name: string;
-    full_name: string;
-    description: string | null;
-    html_url: string;
-    homepage: string | null;
-    fork: boolean;
-    archived: boolean;
-    private: boolean;
-    languages_url: string;
-    pushed_at: string;
-    owner: { login: string };
-  };
-
   const PAGE_SIZE = 3;
-  const repoCache = new Map<string, GitHubRepo[]>();
-
-  const fetchOwnedRepos = async (user: string): Promise<GitHubRepo[]> => {
-    const cached = repoCache.get(user);
-    if (cached) return cached;
-    try {
-      const response = await fetch(
-        `https://api.github.com/users/${encodeURIComponent(user)}/repos?per_page=100&sort=pushed&type=owner`,
-        { headers: { Accept: 'application/vnd.github+json' } },
-      );
-      if (!response.ok) return [];
-      const data = (await response.json()) as GitHubRepo[];
-      const owned = data.filter(
-        (repo) =>
-          !repo.fork &&
-          !repo.private &&
-          repo.owner?.login?.toLowerCase() === user.toLowerCase(),
-      );
-      repoCache.set(user, owned);
-      return owned;
-    } catch {
-      return [];
-    }
-  };
-
-  const fetchLanguages = async (url: string): Promise<string[]> => {
-    try {
-      const response = await fetch(url, {
-        headers: { Accept: 'application/vnd.github+json' },
-      });
-      if (!response.ok) return [];
-      const data = (await response.json()) as Record<string, number>;
-      return Object.entries(data)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 6)
-        .map(([language]) => language);
-    } catch {
-      return [];
-    }
-  };
-
-  const safeUrl = (value: string | null | undefined): string | null => {
-    if (!value) return null;
-    return /^https?:\/\//i.test(value) ? value : null;
-  };
-
-  const findScopeAttribute = (element: Element): string | null => {
-    for (const attr of Array.from(element.attributes)) {
-      if (attr.name.startsWith('data-astro-cid')) return attr.name;
-    }
-    return null;
-  };
-
-  const buildManifestCard = (
-    template: HTMLLIElement,
-    repo: GitHubRepo,
-    index: number,
-  ): HTMLLIElement => {
-    const li = template.cloneNode(true) as HTMLLIElement;
-    li.className = 'manifest revealed';
-    li.dataset.githubRepo = repo.full_name;
-    li.dataset.repoName = repo.name;
-
-    const repoUrl = safeUrl(repo.html_url) ?? `https://github.com/${repo.full_name}`;
-
-    const numEl = li.querySelector('.manifest-num');
-    if (numEl) numEl.textContent = String(index + 1).padStart(2, '0');
-
-    const versionEl = li.querySelector('.manifest-version');
-    if (versionEl) versionEl.textContent = 'v0.1.0';
-
-    const nameLink = li.querySelector<HTMLAnchorElement>('.ms-link');
-    if (nameLink) {
-      nameLink.href = repoUrl;
-      nameLink.textContent = `"${repo.name}"`;
-    }
-
-    const description = li.querySelector<HTMLElement>('.repo-description');
-    if (description) {
-      description.textContent = repo.description ?? 'A repository on GitHub.';
-    }
-
-    const deps = li.querySelector<HTMLElement>('.repo-languages');
-    if (deps) {
-      deps.replaceChildren();
-      deps.setAttribute('aria-label', `${repo.name} technologies`);
-    }
-
-    const sourceLink = li.querySelector<HTMLAnchorElement>('.foot-links .repo-title');
-    if (sourceLink) sourceLink.href = repoUrl;
-
-    const demoLink = li.querySelectorAll<HTMLAnchorElement>('.foot-links a')[1];
-    if (demoLink) demoLink.remove();
-
-    li.querySelector('.active-dot')?.remove();
-
-    return li;
-  };
-
-  const populateLanguages = async (card: HTMLElement, repo: GitHubRepo) => {
-    const target = card.querySelector<HTMLElement>('.repo-languages');
-    if (!target) return;
-    const languages = await fetchLanguages(repo.languages_url);
-    if (languages.length === 0) return;
-    const scope = findScopeAttribute(target);
-    target.replaceChildren(
-      ...languages.map((language) => {
-        const li = document.createElement('li');
-        if (scope) li.setAttribute(scope, '');
-        const plus = document.createElement('span');
-        plus.className = 'dep-plus';
-        plus.setAttribute('aria-hidden', 'true');
-        plus.textContent = '+';
-        if (scope) plus.setAttribute(scope, '');
-        li.append(plus, ' ', language);
-        return li;
-      }),
-    );
-  };
 
   const initializeProjects = () => {
     // ── Tab keyboard nav ──
@@ -661,47 +564,29 @@ const otherViews = otherProjects.map((project, index) => {
     if (!section || !button || !grid || button.dataset.ready === 'true') return;
     button.dataset.ready = 'true';
 
-    const user = section.dataset.githubUser;
-    const template = grid.querySelector<HTMLLIElement>('.manifest');
-    if (!user || !template) {
+    const hiddenCards = () => Array.from(grid.querySelectorAll<HTMLElement>('.manifest[hidden]'));
+    if (hiddenCards().length === 0) {
       button.hidden = true;
       return;
     }
 
-    const collectShownNames = () => {
-      const names = new Set<string>();
-      grid.querySelectorAll<HTMLElement>('.manifest').forEach((card) => {
-        const explicit = card.dataset.repoName?.trim().toLowerCase();
-        if (explicit) names.add(explicit);
-      });
-      return names;
-    };
-
-    button.addEventListener('click', async () => {
+    button.addEventListener('click', () => {
       button.disabled = true;
       const label = button.querySelector('span:not(.dash)');
       const previousLabel = label?.textContent ?? 'cargo search --remote';
-      if (label) label.textContent = 'fetching…';
+      if (label) label.textContent = 'opening…';
 
-      const repos = await fetchOwnedRepos(user);
-      const shown = collectShownNames();
-      const remaining = repos.filter((repo) => !shown.has(repo.name.toLowerCase()));
-      const next = remaining.slice(0, PAGE_SIZE);
-      const baseIndex = grid.querySelectorAll('.manifest').length;
-
-      next.forEach((repo, index) => {
-        const card = buildManifestCard(template, repo, baseIndex + index);
-        grid.appendChild(card);
-        window.setTimeout(() => {
-          void populateLanguages(card, repo);
-        }, index * 60);
+      const next = hiddenCards().slice(0, PAGE_SIZE);
+      next.forEach((card) => {
+        card.hidden = false;
+        card.classList.add('revealed');
       });
 
       button.setAttribute('aria-expanded', 'true');
       if (label) label.textContent = previousLabel;
       button.disabled = false;
 
-      if (remaining.length <= PAGE_SIZE || next.length === 0) {
+      if (hiddenCards().length === 0) {
         button.hidden = true;
       }
     });
@@ -869,6 +754,20 @@ const otherViews = otherProjects.map((project, index) => {
     font-weight: 500;
   }
 
+  .tab-link,
+  .bc-file-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .tab-link:hover,
+  .bc-file-link:hover {
+    color: var(--emerald-100);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+
   .tab-dot {
     width: 6px;
     height: 6px;
@@ -912,7 +811,8 @@ const otherViews = otherProjects.map((project, index) => {
   .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"],
   .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"],
   .tab-radio:nth-of-type(4):checked ~ .tab-strip > .tab[data-tab-index="3"],
-  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"] {
+  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"],
+  .tab-radio:nth-of-type(6):checked ~ .tab-strip > .tab[data-tab-index="5"] {
     color: var(--slate-100);
     background: rgba(34, 46, 78, 0.65);
   }
@@ -921,7 +821,8 @@ const otherViews = otherProjects.map((project, index) => {
   .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"]::before,
   .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"]::before,
   .tab-radio:nth-of-type(4):checked ~ .tab-strip > .tab[data-tab-index="3"]::before,
-  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"]::before {
+  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"]::before,
+  .tab-radio:nth-of-type(6):checked ~ .tab-strip > .tab[data-tab-index="5"]::before {
     content: '';
     position: absolute;
     top: 0;
@@ -934,7 +835,10 @@ const otherViews = otherProjects.map((project, index) => {
 
   .tab-radio:nth-of-type(1):checked ~ .tab-strip > .tab[data-tab-index="0"] .tab-dot,
   .tab-radio:nth-of-type(2):checked ~ .tab-strip > .tab[data-tab-index="1"] .tab-dot,
-  .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"] .tab-dot {
+  .tab-radio:nth-of-type(3):checked ~ .tab-strip > .tab[data-tab-index="2"] .tab-dot,
+  .tab-radio:nth-of-type(4):checked ~ .tab-strip > .tab[data-tab-index="3"] .tab-dot,
+  .tab-radio:nth-of-type(5):checked ~ .tab-strip > .tab[data-tab-index="4"] .tab-dot,
+  .tab-radio:nth-of-type(6):checked ~ .tab-strip > .tab[data-tab-index="5"] .tab-dot {
     background: var(--lang-hue);
     box-shadow: 0 0 6px var(--lang-hue);
   }
@@ -955,7 +859,8 @@ const otherViews = otherProjects.map((project, index) => {
   .tab-radio:nth-of-type(2):checked ~ .ide-body > .panel[data-panel-index="1"],
   .tab-radio:nth-of-type(3):checked ~ .ide-body > .panel[data-panel-index="2"],
   .tab-radio:nth-of-type(4):checked ~ .ide-body > .panel[data-panel-index="3"],
-  .tab-radio:nth-of-type(5):checked ~ .ide-body > .panel[data-panel-index="4"] {
+  .tab-radio:nth-of-type(5):checked ~ .ide-body > .panel[data-panel-index="4"],
+  .tab-radio:nth-of-type(6):checked ~ .ide-body > .panel[data-panel-index="5"] {
     display: block;
   }
 
@@ -1153,6 +1058,11 @@ const otherViews = otherProjects.map((project, index) => {
     font-size: 1.15rem;
     font-weight: 700;
     line-height: 1;
+  }
+
+  .stat-num.branch-name {
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
   }
 
   .stat-key {
@@ -1494,6 +1404,13 @@ const otherViews = otherProjects.map((project, index) => {
     letter-spacing: 0.04em;
   }
 
+  .manifest-version.is-empty,
+  .release-cell.is-empty {
+    color: rgba(187, 247, 208, 0.46);
+    border-color: rgba(187, 247, 208, 0.14);
+    background: rgba(187, 247, 208, 0.04);
+  }
+
   /* sections inside the manifest body */
   .manifest-section {
     display: flex;
@@ -1722,7 +1639,10 @@ const otherViews = otherProjects.map((project, index) => {
 
   :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="0"],
   :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="1"],
-  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="2"] {
+  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="2"],
+  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="3"],
+  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="4"],
+  :global(html:not(.dark)) .tab-radio:checked ~ .tab-strip > .tab[data-tab-index="5"] {
     color: rgb(15 23 42);
     background: rgb(255 255 255);
   }
@@ -1768,6 +1688,12 @@ const otherViews = otherProjects.map((project, index) => {
     background: rgb(236 253 245);
     border-color: rgb(167 243 208);
     color: rgb(5 150 105);
+  }
+  :global(html:not(.dark)) .manifest-version.is-empty,
+  :global(html:not(.dark)) .release-cell.is-empty {
+    background: rgb(248 250 252);
+    border-color: rgb(226 232 240);
+    color: rgb(100 116 139);
   }
   :global(html:not(.dark)) .manifest-head { border-bottom-color: rgb(226 232 240); }
   :global(html:not(.dark)) .manifest-desc .repo-description {

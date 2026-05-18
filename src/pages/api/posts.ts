@@ -1,6 +1,7 @@
 import { getCollection } from 'astro:content';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { entrySlug } from '../../lib/content';
 
 export async function GET({ url }) {
   const searchParams = new URL(url).searchParams;
@@ -18,7 +19,9 @@ export async function GET({ url }) {
     .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
     .slice(start, end);
 
-  const html = sortedPosts.map(post => `
+  const html = sortedPosts.map(post => {
+    const slug = entrySlug(post);
+    return `
     <article class="group">
       <div class="bg-gray-50 dark:bg-dark-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
         <div class="space-y-4">
@@ -37,7 +40,7 @@ export async function GET({ url }) {
             ${post.data.description}
           </p>
           <div class="flex items-center justify-between">
-            <a href="${base}/blog/${post.slug}" class="inline-flex items-center text-primary-500 hover:text-primary-600">
+            <a href="${base}/blog/${slug}" class="inline-flex items-center text-primary-500 hover:text-primary-600">
               Leer más
               <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M5 12h14m-7-7l7 7-7 7"/>
@@ -50,7 +53,8 @@ export async function GET({ url }) {
         </div>
       </div>
     </article>
-  `).join('');
+  `;
+  }).join('');
 
   return new Response(JSON.stringify({ html }), {
     headers: {

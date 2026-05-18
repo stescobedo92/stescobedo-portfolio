@@ -37,6 +37,16 @@ export type EducationItem = {
 
 export const profile = {
   githubUsername: 'stescobedo92',
+  githubPrivateRepoCount: 1,
+  githubTotalRepoCount: 140,
+  pinnedRepos: [
+    'stescobedo92/vscode-binary-coffee',
+    'stescobedo92/ScheduleYourTask',
+    'stescobedo92/apppass',
+    'stescobedo92/OpenWeatherPlace',
+    'stescobedo92/unique_ptr',
+    'stescobedo92/wallpaper',
+  ],
   name: 'Sergio Triana Escobedo',
   label: 'Full Stack Developer',
   location: 'Cuernavaca/Mexico',

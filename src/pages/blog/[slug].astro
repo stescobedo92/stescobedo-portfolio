@@ -1,21 +1,23 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import Icon from '../../components/portfolio/Icon.astro';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { profile } from '../../data/portfolio';
+import { entrySlug } from '../../lib/content';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
   return posts.map((post) => ({
-    params: { slug: post.slug },
+    params: { slug: entrySlug(post) },
     props: { post, posts },
   }));
 }
 
 const { post, posts } = Astro.props;
-const { Content, headings } = await post.render();
+const slug = entrySlug(post);
+const { Content, headings } = await render(post);
 
 const rawBase = import.meta.env.BASE_URL || '/';
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
@@ -36,7 +38,7 @@ if (typeof avatar === 'string' && avatar.startsWith('/') && !avatar.startsWith('
 const sortedPosts = posts
   .filter((p: any) => !p.data.draft)
   .sort((a: any, b: any) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-const currentIndex = sortedPosts.findIndex((p: any) => p.slug === post.slug);
+const currentIndex = sortedPosts.findIndex((p: any) => entrySlug(p) === slug);
 const prevPost = currentIndex < sortedPosts.length - 1 ? sortedPosts[currentIndex + 1] : null;
 const nextPost = currentIndex > 0 ? sortedPosts[currentIndex - 1] : null;
 
@@ -60,8 +62,8 @@ const shortSha = (input: string) => {
   return h.toString(16).padStart(8, '0').slice(0, 7);
 };
 
-const sha = shortSha(post.slug);
-const filePath = `docs/${post.data.category.toLowerCase().replace(/\s+/g, '-')}/${post.slug}.md`;
+const sha = shortSha(slug);
+const filePath = `docs/${post.data.category.toLowerCase().replace(/\s+/g, '-')}/${slug}.md`;
 
 // Filter TOC to top-2 levels (h2/h3)
 const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
@@ -85,7 +87,7 @@ const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
         <span class="path-sep" aria-hidden="true">/</span>
         <span class="path-seg active">
           <span class="path-icon" aria-hidden="true">M↓</span>
-          {post.slug}.md
+          {slug}.md
         </span>
 
         <span class="path-spacer"></span>
@@ -99,7 +101,7 @@ const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
       <div class="tab-strip" aria-hidden="true">
         <div class="tab is-active">
           <span class="tab-glyph">M↓</span>
-          <span class="tab-name">{post.slug}.md</span>
+        <span class="tab-name">{slug}.md</span>
           <span class="tab-dot"></span>
           <span class="tab-close">×</span>
         </div>
@@ -224,7 +226,7 @@ const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
               </a>
               <a
                 class="share-btn"
-                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://stescobedo92.github.io/stescobedo-portfolio/blog/${post.slug}`)}`}
+                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://stescobedo92.github.io/stescobedo-portfolio/blog/${slug}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Share on LinkedIn"
@@ -255,24 +257,24 @@ const toc = (headings ?? []).filter((h: any) => h.depth >= 2 && h.depth <= 3);
             </p>
             <div class="adj-grid">
               {prevPost ? (
-                <a class="adj-card prev" href={withBase(`blog/${prevPost.slug}`)}>
+                <a class="adj-card prev" href={withBase(`blog/${entrySlug(prevPost)}`)}>
                   <span class="adj-label">
                     <span class="adj-arrow flip" aria-hidden="true">→</span>
                     older file
                   </span>
-                  <span class="adj-fname">{prevPost.slug}.md</span>
+                  <span class="adj-fname">{entrySlug(prevPost)}.md</span>
                   <span class="adj-name">{prevPost.data.title}</span>
                   <span class="adj-meta">#{prevPost.data.category.toLowerCase()} · {prevPost.data.readingTime} min</span>
                 </a>
               ) : <span class="adj-card placeholder" aria-hidden="true"></span>}
 
               {nextPost ? (
-                <a class="adj-card next" href={withBase(`blog/${nextPost.slug}`)}>
+                <a class="adj-card next" href={withBase(`blog/${entrySlug(nextPost)}`)}>
                   <span class="adj-label">
                     newer file
                     <span class="adj-arrow" aria-hidden="true">→</span>
                   </span>
-                  <span class="adj-fname">{nextPost.slug}.md</span>
+                  <span class="adj-fname">{entrySlug(nextPost)}.md</span>
                   <span class="adj-name">{nextPost.data.title}</span>
                   <span class="adj-meta">#{nextPost.data.category.toLowerCase()} · {nextPost.data.readingTime} min</span>
                 </a>

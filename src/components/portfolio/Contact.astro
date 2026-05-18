@@ -7,10 +7,10 @@ import { profile } from '../../data/portfolio';
 const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(2, '0')).join('\n');
 ---
 
-<Section title="Correspondence" id="contact">
+<Section title="Correspondence" titleKey="sections.contact" id="contact">
   <p class="contact-eyebrow">
     <span class="dash" aria-hidden="true"></span>
-    cd ~/inbox · open contact.ts
+    <span data-i18n="contact.eyebrow">cd ~/inbox · open contact.ts</span>
     <span class="dash" aria-hidden="true"></span>
   </p>
 
@@ -25,9 +25,9 @@ const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(
         <span class="tab-modified" aria-hidden="true">●</span>
       </span>
       <span class="ide-meta">
-        <span class="meta-key">reply</span>
+        <span class="meta-key" data-i18n="contact.reply">reply</span>
         <span class="meta-arrow">→</span>
-        <span class="meta-val">within 48h</span>
+        <span class="meta-val" data-i18n="contact.replyTime">within 48h</span>
       </span>
     </div>
 
@@ -39,10 +39,10 @@ const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(
           <span class="comment">/**</span>
         </p>
         <p class="line">
-          <span class="comment">{` * Send a message — every dispatch lands directly in my inbox.`}</span>
+          <span class="comment" data-i18n="contact.comment1">{` * Send a message - every dispatch lands directly in my inbox.`}</span>
         </p>
         <p class="line">
-          <span class="comment">{` * Reply window: 48h · From: ${profile.location}`}</span>
+          <span class="comment" data-i18n="contact.comment2">{` * Reply window: 48h · From: ${profile.location}`}</span>
         </p>
         <p class="line">
           <span class="comment">{` */`}</span>
@@ -64,7 +64,7 @@ const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(
             <span class="op">=</span>
             <label class="field">
               <span class="quote">"</span>
-              <input name="name" type="text" autocomplete="name" placeholder="John Doe" required />
+              <input name="name" type="text" autocomplete="name" placeholder="John Doe" data-i18n-placeholder="contact.namePlaceholder" required />
               <span class="quote">"</span>
               <span class="punct">;</span>
               <span class="error" data-error-for="name"></span>
@@ -90,7 +90,7 @@ const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(
             <span class="op">=</span>
             <label class="field">
               <span class="quote">"</span>
-              <input name="subject" type="text" placeholder="A new project, a question, an idea…" required />
+              <input name="subject" type="text" placeholder="A new project, a question, an idea..." data-i18n-placeholder="contact.subjectPlaceholder" required />
               <span class="quote">"</span>
               <span class="punct">;</span>
               <span class="error" data-error-for="subject"></span>
@@ -105,7 +105,7 @@ const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(
           </div>
           <div class="line indented-2 textarea-wrap">
             <label class="field block">
-              <textarea name="message" rows="4" placeholder="Tell me what you're trying to build, the constraints, the deadline." required minlength="10"></textarea>
+              <textarea name="message" rows="4" placeholder="Tell me what you're trying to build, the constraints, the deadline." data-i18n-placeholder="contact.messagePlaceholder" required minlength="10"></textarea>
               <span class="error" data-error-for="message"></span>
             </label>
           </div>
@@ -142,7 +142,7 @@ const gutterLines = Array.from({ length: 23 }, (_, i) => String(i + 1).padStart(
           <p class="line"></p>
 
           <p class="line">
-            <span class="comment">{`// or write directly:`}</span>
+            <span class="comment" data-i18n="contact.direct">{`// or write directly:`}</span>
             <a class="email-inline" href={`mailto:${profile.email}`}>
               <span class="quote">"</span>{profile.email}<span class="quote">"</span>
             </a>

@@ -2,6 +2,7 @@
 import TypedText from './TypedText.astro';
 import Icon from './Icon.astro';
 import { profile } from '../../data/portfolio';
+import { getUserProfile } from '../../lib/github';
 
 const rawBase = import.meta.env.BASE_URL || '/';
 const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
@@ -9,6 +10,13 @@ const withBase = (path: string) => `${base}${path.replace(/^\//, '')}`;
 
 const firstName = profile.name.split(' ')[0];
 const lastNames = profile.name.split(' ').slice(1).join(' ');
+const githubProfile = await getUserProfile(profile.githubUsername, {
+  knownPrivateRepos: profile.githubPrivateRepoCount,
+  totalReposFallback: profile.githubTotalRepoCount,
+});
+const avatarUrl = githubProfile.avatarUrl
+  ? `${githubProfile.avatarUrl}${githubProfile.avatarUrl.includes('?') ? '&' : '?'}s=420`
+  : profile.image;
 
 // Map socials to icon names (used for portrait-topbar)
 const iconByNetwork = {
@@ -34,17 +42,17 @@ const iconByNetwork = {
   <div class="status-bar">
     <span class="status-cell">
       <span class="status-dot live" aria-hidden="true"></span>
-      <span class="status-key">Status</span>
-      <span class="status-val">Available for hire</span>
+      <span class="status-key" data-i18n="hero.status">Status</span>
+      <span class="status-val" data-i18n="hero.available">Available for hire</span>
     </span>
     <span class="status-sep" aria-hidden="true"></span>
     <span class="status-cell">
-      <span class="status-key">Now</span>
-      <span class="status-val">Building backend services</span>
+      <span class="status-key" data-i18n="hero.now">Now</span>
+      <span class="status-val" data-i18n="hero.building">Building backend services</span>
     </span>
     <span class="status-sep" aria-hidden="true"></span>
     <span class="status-cell">
-      <span class="status-key">Time</span>
+      <span class="status-key" data-i18n="hero.time">Time</span>
       <span class="status-val" id="hero-time">—</span>
     </span>
   </div>
@@ -81,13 +89,13 @@ const iconByNetwork = {
           <span class="prop-key">experience:</span>
           <span class="prop-val num">8</span>
           <span class="prop-op">+</span>
-          <span class="prop-comment">// years</span>
+          <span class="prop-comment" data-i18n="hero.roleComment">// years</span>
           <span class="prop-comma">,</span>
         </li>
         <li>
           <span class="prop-key">repos:</span>
-          <span class="prop-val num" data-repo-count>—</span>
-          <span class="prop-comment">// public on github</span>
+          <span class="prop-val num" data-repo-count>{githubProfile.totalRepos ?? '—'}</span>
+          <span class="prop-comment" data-i18n="hero.reposComment">// public on github</span>
           <span class="prop-comma">,</span>
         </li>
         <li>
@@ -103,19 +111,19 @@ const iconByNetwork = {
         <a class="cta primary" href={`mailto:${profile.email}`}>
           <span class="cta-label">
             <Icon name="send" class="h-4 w-4" />
-            Get in touch
+            <span data-i18n="hero.contact">Get in touch</span>
           </span>
           <span class="cta-glow" aria-hidden="true"></span>
         </a>
         <a class="cta secondary" href={withBase('Sergio_Triana_Escobedo_CV.pdf')} download>
           <span class="cta-label">
             <Icon name="download" class="h-4 w-4" />
-            Resume / CV
+            <span data-i18n="hero.resume">Resume / CV</span>
           </span>
         </a>
         <a class="cta ghost" href="#projects">
           <span class="cta-label">
-            See work
+            <span data-i18n="hero.seeWork">See work</span>
             <Icon name="arrow-right" class="h-4 w-4" />
           </span>
         </a>
@@ -147,7 +155,7 @@ const iconByNetwork = {
 
         <div class="portrait-photo">
           <img
-            src={profile.image}
+            src={avatarUrl}
             alt={profile.name}
             width="420"
             height="420"
@@ -182,7 +190,7 @@ const iconByNetwork = {
 
   <!-- Bottom marquee strip -->
   <div class="bottom-strip" aria-hidden="true">
-    <span class="strip-eyebrow">Currently exploring</span>
+    <span class="strip-eyebrow" data-i18n="hero.exploring">Currently exploring</span>
     <div class="strip-marquee">
       <ul class="strip-track">
         {[...profile.passionItems, ...profile.passionItems].map((item) => (
@@ -198,7 +206,7 @@ const iconByNetwork = {
   <!-- Scroll hint -->
   <a class="scroll-hint" href="#about" aria-label="Scroll to About">
     <span class="hint-line" aria-hidden="true"></span>
-    <span class="hint-label">scroll</span>
+    <span class="hint-label" data-i18n="hero.scroll">scroll</span>
   </a>
 </section>
 
@@ -444,34 +452,6 @@ const iconByNetwork = {
       window.setInterval(updateTime, 30000);
     }
 
-    // GitHub profile hydration: avatar + bio + public_repos count
-    (async () => {
-      const avatar = document.querySelector('[data-github-avatar]') as HTMLImageElement | null;
-      const repoCountEl = document.querySelector('[data-repo-count]');
-      const bioEl = document.querySelector('[data-github-bio]');
-      const username = 'stescobedo92';
-      try {
-        const response = await fetch(`https://api.github.com/users/${username}`, {
-          cache: 'no-store',
-          headers: { Accept: 'application/vnd.github+json' },
-        });
-        if (!response.ok) return;
-        const data = await response.json();
-        if (avatar && data.avatar_url) {
-          avatar.src = `${data.avatar_url}${data.avatar_url.includes('?') ? '&' : '?'}s=420`;
-        }
-        if (repoCountEl && typeof data.public_repos === 'number') {
-          repoCountEl.textContent = String(data.public_repos);
-        }
-        // Bio is optional; only update if GitHub returns one
-        if (bioEl && data.bio) {
-          // Keep the styled motto markup; only update plain text content if no children other than text
-          if (bioEl.children.length === 0) bioEl.textContent = data.bio;
-        }
-      } catch {
-        // Keep static fallback
-      }
-    })();
   };
 
   document.addEventListener('astro:page-load', initializeHero);
@@ -555,6 +535,7 @@ const iconByNetwork = {
 
   .prop-op {
     color: rgb(110 231 183);
+    margin-left: -0.42rem;
   }
 
   .prop-comma {

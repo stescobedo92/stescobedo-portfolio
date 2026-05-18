@@ -2,10 +2,19 @@
 import Section from './Section.astro';
 import Icon from './Icon.astro';
 import { profile } from '../../data/portfolio';
+import { getUserProfile } from '../../lib/github';
 
 // Stats line + status pill content
 const tzOffset = 'GMT-5';
 const yearsBuilding = '8+';
+const githubProfile = await getUserProfile(profile.githubUsername, {
+  knownPrivateRepos: profile.githubPrivateRepoCount,
+  totalReposFallback: profile.githubTotalRepoCount,
+});
+const avatarUrl = githubProfile.avatarUrl
+  ? `${githubProfile.avatarUrl}${githubProfile.avatarUrl.includes('?') ? '&' : '?'}s=420`
+  : profile.image;
+const aboutBio = githubProfile.bio ?? profile.summary;
 
 // Passion items already on profile.passionItems — used in marquee
 const passionsLoop = [...profile.passionItems, ...profile.passionItems];
@@ -19,7 +28,7 @@ const iconByNetwork = {
 } as const;
 ---
 
-<Section title="About me" id="about">
+<Section title="About me" titleKey="sections.about" id="about">
   <div class="about-frame">
     <span class="frame-corner tl" aria-hidden="true">+</span>
     <span class="frame-corner tr" aria-hidden="true">+</span>
@@ -28,7 +37,7 @@ const iconByNetwork = {
 
     <p class="about-eyebrow">
       <span class="dash" aria-hidden="true"></span>
-      Profile · Fig. 01
+      <span data-i18n="about.figure">Profile · Fig. 01</span>
       <span class="dash" aria-hidden="true"></span>
     </p>
 
@@ -40,32 +49,32 @@ const iconByNetwork = {
         <div class="status-row">
           <span class="status-pill">
             <span class="status-dot" aria-hidden="true"></span>
-            <span>Available · {tzOffset}</span>
+            <span data-i18n="about.available">Available · {tzOffset}</span>
           </span>
-          <span class="status-meta">Open for backend &middot; cloud &middot; tooling</span>
+          <span class="status-meta" data-i18n="about.openFor">Open for backend &middot; cloud &middot; tooling</span>
         </div>
 
-        <p class="bio" data-github-bio>{profile.summary}</p>
+        <p class="bio" data-github-bio>{aboutBio}</p>
 
         <ul class="meta-strip" aria-label="Career stats">
           <li>
             <span class="meta-num">{yearsBuilding}</span>
-            <span class="meta-lbl">Years building</span>
+            <span class="meta-lbl" data-i18n="about.years">Years building</span>
           </li>
           <li>
             <span class="meta-num">∞</span>
-            <span class="meta-lbl">Curiosity</span>
+            <span class="meta-lbl" data-i18n="about.curiosity">Curiosity</span>
           </li>
           <li>
-            <span class="meta-num" data-repo-count>—</span>
-            <span class="meta-lbl">Repos shipped</span>
+            <span class="meta-num" data-repo-count>{githubProfile.totalRepos ?? '—'}</span>
+            <span class="meta-lbl" data-i18n="about.repos">Repos shipped</span>
           </li>
         </ul>
 
         <div class="passion-block">
           <p class="passion-label">
             <span class="dash" aria-hidden="true"></span>
-            Currently into
+            <span data-i18n="about.into">Currently into</span>
           </p>
           <div class="passion-marquee" aria-hidden="true">
             <ul class="passion-track">
@@ -99,7 +108,7 @@ const iconByNetwork = {
           </div>
 
           <img
-            src={profile.image}
+            src={avatarUrl}
             alt={profile.name}
             width="420"
             height="420"
@@ -109,15 +118,15 @@ const iconByNetwork = {
 
           <figcaption class="portrait-caption">
             <span class="cap-line">
-              <span class="cap-key">Name</span>
+              <span class="cap-key" data-i18n="about.name">Name</span>
               <span class="cap-val">{profile.name}</span>
             </span>
             <span class="cap-line">
-              <span class="cap-key">Role</span>
+              <span class="cap-key" data-i18n="about.role">Role</span>
               <span class="cap-val">{profile.label}</span>
             </span>
             <span class="cap-line">
-              <span class="cap-key">From</span>
+              <span class="cap-key" data-i18n="about.from">From</span>
               <span class="cap-val">{profile.location}</span>
             </span>
           </figcaption>
@@ -126,38 +135,6 @@ const iconByNetwork = {
     </div>
   </div>
 </Section>
-
-<script define:vars={{ username: profile.githubUsername }}>
-  const hydrateGitHubProfile = async () => {
-    const avatar = document.querySelector('[data-github-avatar]');
-    const bio = document.querySelector('[data-github-bio]');
-    if (!avatar && !bio) return;
-
-    try {
-      const response = await fetch(`https://api.github.com/users/${username}`, {
-        cache: 'no-store',
-        headers: { Accept: 'application/vnd.github+json' },
-      });
-      if (!response.ok) return;
-      const data = await response.json();
-      if (avatar && data.avatar_url) {
-        avatar.src = `${data.avatar_url}${data.avatar_url.includes('?') ? '&' : '?'}s=420`;
-      }
-      if (bio && data.bio) {
-        bio.textContent = data.bio;
-      }
-      const repoCountEl = document.querySelector('[data-repo-count]');
-      if (repoCountEl && typeof data.public_repos === 'number') {
-        repoCountEl.textContent = String(data.public_repos);
-      }
-    } catch {
-      // Keep the local fallback if GitHub rate limits or network fails.
-    }
-  };
-
-  document.addEventListener('astro:page-load', hydrateGitHubProfile);
-  hydrateGitHubProfile();
-</script>
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&display=swap');
