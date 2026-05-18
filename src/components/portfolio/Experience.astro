@@ -75,7 +75,7 @@ const totalYears = (() => {
 })();
 ---
 
-<Section title="Work experience" id="experience">
+<Section title="Work experience" titleKey="sections.experience" id="experience">
   <!-- TERMINAL TOOLBAR -->
   <div class="git-toolbar" aria-label="Git log toolbar">
     <div class="terminal-prompt" aria-hidden="true">
@@ -96,12 +96,12 @@ const totalYears = (() => {
 
     <div class="git-stats" role="group" aria-label="Career stats">
       <span class="stat">
-        <span class="stat-key">commits</span>
+        <span class="stat-key" data-i18n="experience.commits">commits</span>
         <span class="stat-val">{work.length}</span>
       </span>
       <span class="stat-sep" aria-hidden="true"></span>
       <span class="stat">
-        <span class="stat-key">span</span>
+        <span class="stat-key" data-i18n="experience.span">span</span>
         <span class="stat-val">{totalYears}y+</span>
       </span>
       <span class="stat-sep" aria-hidden="true"></span>
@@ -120,7 +120,7 @@ const totalYears = (() => {
     </button>
     <button type="button" class="chip" data-filter="current">
       <span class="chip-dot" aria-hidden="true"></span>
-      <span class="chip-flag">--current</span>
+      <span class="chip-flag" data-i18n="experience.current">--current</span>
     </button>
     <button type="button" class="chip" data-filter="backend">
       <span class="chip-flag">backend</span>
@@ -194,7 +194,7 @@ const totalYears = (() => {
               {isCurrent && (
                 <span class="now-pill" aria-label="Currently active">
                   <span class="now-dot"></span>
-                  <span>active</span>
+                  <span data-i18n="experience.active">active</span>
                 </span>
               )}
             </header>
@@ -210,7 +210,7 @@ const totalYears = (() => {
 
             <div class="commit-stats">
               <span class="stat-pill">
-                <span class="stat-pill-key">location</span>
+                <span class="stat-pill-key" data-i18n="experience.location">location</span>
                 <span class="stat-pill-val">{item.location}</span>
               </span>
               <span class="stat-pill">
@@ -219,15 +219,15 @@ const totalYears = (() => {
               </span>
               <span class="stat-pill diff">
                 <span class="diff-add">+{item.highlights.length}</span>
-                <span class="diff-key">files changed</span>
+                <span class="diff-key" data-i18n="experience.filesChanged">files changed</span>
               </span>
             </div>
 
             <details class="commit-diff">
               <summary>
                 <span class="diff-arrow" aria-hidden="true">▸</span>
-                <span class="diff-summary-text">show diff</span>
-                <span class="diff-summary-hint" aria-hidden="true">(click to expand)</span>
+                <span class="diff-summary-text" data-i18n="experience.showDiff">show diff</span>
+                <span class="diff-summary-hint" aria-hidden="true" data-i18n="experience.clickExpand">(click to expand)</span>
               </summary>
               <ul class="diff-list">
                 {item.highlights.map((highlight, i) => (

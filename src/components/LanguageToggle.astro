@@ -1,0 +1,268 @@
+---
+---
+
+<button class="language-toggle" type="button" aria-label="Change language" data-language-toggle>
+  <span class="lang-option" data-lang-option="en">EN</span>
+  <span class="lang-sep" aria-hidden="true">/</span>
+  <span class="lang-option" data-lang-option="es">ES</span>
+</button>
+
+<script>
+  type Lang = 'en' | 'es';
+  const translations: Record<Lang, Record<string, string>> = {
+    en: {
+      'nav.about': 'About',
+      'nav.experience': 'Experience',
+      'nav.work': 'Work',
+      'nav.contact': 'Contact',
+      'nav.blog': 'Blog',
+      'nav.brandMeta': 'Software Engineering',
+      'shell.skip': 'Skip to main content',
+      'sections.about': 'About me',
+      'sections.experience': 'Work experience',
+      'sections.projects': 'Featured Work',
+      'sections.education': 'Education',
+      'sections.skills': 'Stack',
+      'sections.posts': 'Posts',
+      'sections.contact': 'Correspondence',
+      'hero.status': 'Status',
+      'hero.available': 'Available for hire',
+      'hero.now': 'Now',
+      'hero.building': 'Building backend services',
+      'hero.time': 'Time',
+      'hero.roleComment': '// years',
+      'hero.reposComment': '// public on github',
+      'hero.contact': 'Get in touch',
+      'hero.resume': 'Resume / CV',
+      'hero.seeWork': 'See work',
+      'hero.exploring': 'Currently exploring',
+      'hero.scroll': 'scroll',
+      'about.figure': 'Profile · Fig. 01',
+      'about.available': 'Available · GMT-5',
+      'about.openFor': 'Open for backend · cloud · tooling',
+      'about.years': 'Years building',
+      'about.curiosity': 'Curiosity',
+      'about.repos': 'Repos shipped',
+      'about.into': 'Currently into',
+      'about.name': 'Name',
+      'about.role': 'Role',
+      'about.from': 'From',
+      'experience.commits': 'commits',
+      'experience.span': 'span',
+      'experience.current': '--current',
+      'experience.active': 'active',
+      'experience.location': 'location',
+      'experience.filesChanged': 'files changed',
+      'experience.showDiff': 'show diff',
+      'experience.clickExpand': '(click to expand)',
+      'projects.stats': 'stats',
+      'projects.stars': 'stars',
+      'projects.commits': 'commits',
+      'projects.branch': 'branch',
+      'projects.stack': 'stack',
+      'projects.highlights': 'highlights',
+      'projects.source': 'Source',
+      'projects.sourceLower': 'source',
+      'projects.moreCrates': 'more crates from the same author',
+      'projects.viewArchive': 'view archive ->',
+      'projects.cargoSearch': 'cargo search --remote',
+      'projects.noRelease': 'no release',
+      'skills.daily': 'Daily drivers',
+      'skills.years': 'Years building',
+      'skills.tools': 'Languages & tools',
+      'skills.learning': 'Always learning',
+      'skills.note': 'Hover to slow · Click to bring focus.',
+      'contact.eyebrow': 'cd ~/inbox · open contact.ts',
+      'contact.reply': 'reply',
+      'contact.replyTime': 'within 48h',
+      'contact.comment1': ' * Send a message - every dispatch lands directly in my inbox.',
+      'contact.comment2': ' * Reply window: 48h · From: Cuernavaca/Mexico',
+      'contact.namePlaceholder': 'John Doe',
+      'contact.subjectPlaceholder': 'A new project, a question, an idea...',
+      'contact.messagePlaceholder': "Tell me what you're trying to build, the constraints, the deadline.",
+      'contact.direct': '// or write directly:',
+      'posts.archive': 'cat all-entries',
+      'footer.goto': 'goto top',
+    },
+    es: {
+      'nav.about': 'Perfil',
+      'nav.experience': 'Experiencia',
+      'nav.work': 'Proyectos',
+      'nav.contact': 'Contacto',
+      'nav.blog': 'Blog',
+      'nav.brandMeta': 'Ingenieria de Software',
+      'shell.skip': 'Saltar al contenido principal',
+      'sections.about': 'Sobre mi',
+      'sections.experience': 'Experiencia laboral',
+      'sections.projects': 'Trabajo destacado',
+      'sections.education': 'Educacion',
+      'sections.skills': 'Stack',
+      'sections.posts': 'Posts',
+      'sections.contact': 'Correspondencia',
+      'hero.status': 'Estado',
+      'hero.available': 'Disponible para contratar',
+      'hero.now': 'Ahora',
+      'hero.building': 'Construyendo servicios backend',
+      'hero.time': 'Hora',
+      'hero.roleComment': '// anios',
+      'hero.reposComment': '// publicos en github',
+      'hero.contact': 'Contactame',
+      'hero.resume': 'CV / Resume',
+      'hero.seeWork': 'Ver proyectos',
+      'hero.exploring': 'Explorando ahora',
+      'hero.scroll': 'scroll',
+      'about.figure': 'Perfil · Fig. 01',
+      'about.available': 'Disponible · GMT-5',
+      'about.openFor': 'Abierto a backend · cloud · tooling',
+      'about.years': 'Anios construyendo',
+      'about.curiosity': 'Curiosidad',
+      'about.repos': 'Repos publicados',
+      'about.into': 'Intereses actuales',
+      'about.name': 'Nombre',
+      'about.role': 'Rol',
+      'about.from': 'Desde',
+      'experience.commits': 'commits',
+      'experience.span': 'periodo',
+      'experience.current': '--actual',
+      'experience.active': 'activo',
+      'experience.location': 'ubicacion',
+      'experience.filesChanged': 'archivos cambiados',
+      'experience.showDiff': 'mostrar diff',
+      'experience.clickExpand': '(click para expandir)',
+      'projects.stats': 'stats',
+      'projects.stars': 'estrellas',
+      'projects.commits': 'commits',
+      'projects.branch': 'rama',
+      'projects.stack': 'stack',
+      'projects.highlights': 'puntos clave',
+      'projects.source': 'Codigo',
+      'projects.sourceLower': 'codigo',
+      'projects.moreCrates': 'mas crates del mismo autor',
+      'projects.viewArchive': 'ver archivo ->',
+      'projects.cargoSearch': 'cargo search --remote',
+      'projects.noRelease': 'sin release',
+      'skills.daily': 'Uso diario',
+      'skills.years': 'Anios construyendo',
+      'skills.tools': 'Lenguajes y herramientas',
+      'skills.learning': 'Aprendizaje continuo',
+      'skills.note': 'Hover para pausar · Click para enfocar.',
+      'contact.eyebrow': 'cd ~/inbox · open contacto.ts',
+      'contact.reply': 'respuesta',
+      'contact.replyTime': 'en 48h',
+      'contact.comment1': ' * Envia un mensaje - cada dispatch llega directo a mi inbox.',
+      'contact.comment2': ' * Tiempo de respuesta: 48h · Desde: Cuernavaca/Mexico',
+      'contact.namePlaceholder': 'Juan Perez',
+      'contact.subjectPlaceholder': 'Un proyecto nuevo, una pregunta, una idea...',
+      'contact.messagePlaceholder': 'Cuentame que quieres construir, las restricciones y la fecha objetivo.',
+      'contact.direct': '// o escribe directo:',
+      'posts.archive': 'cat todas-las-entradas',
+      'footer.goto': 'goto top',
+    },
+  };
+
+  const getInitialLanguage = (): Lang => {
+    return 'en';
+  };
+
+  const applyLanguage = (lang: Lang) => {
+    const dict = translations[lang];
+    document.documentElement.lang = lang;
+    document.documentElement.dataset.lang = lang;
+    localStorage.setItem('language', lang);
+
+    document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((element) => {
+      const key = element.dataset.i18n;
+      if (key && dict[key]) element.textContent = dict[key];
+    });
+
+    document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-i18n-placeholder]').forEach((element) => {
+      const key = element.dataset.i18nPlaceholder;
+      if (key && dict[key]) element.placeholder = dict[key];
+    });
+
+    document.querySelectorAll<HTMLElement>('.manifest-version.is-empty, .release-cell.is-empty').forEach((element) => {
+      element.textContent = dict['projects.noRelease'];
+    });
+
+    document.querySelectorAll<HTMLElement>('[data-lang-option]').forEach((element) => {
+      element.classList.toggle('is-active', element.dataset.langOption === lang);
+    });
+  };
+
+  const initializeLanguageToggles = () => {
+    const lang = getInitialLanguage();
+    applyLanguage(lang);
+    document.querySelectorAll<HTMLButtonElement>('[data-language-toggle]').forEach((button) => {
+      if (button.dataset.ready === 'true') return;
+      button.dataset.ready = 'true';
+      button.addEventListener('click', () => {
+        applyLanguage(document.documentElement.dataset.lang === 'es' ? 'en' : 'es');
+      });
+    });
+  };
+
+  document.addEventListener('astro:page-load', initializeLanguageToggles);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeLanguageToggles, { once: true });
+  } else {
+    initializeLanguageToggles();
+  }
+</script>
+
+<style>
+  .language-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 2.35rem;
+    padding: 0 0.75rem;
+    border: 1px solid rgba(110, 231, 183, 0.34);
+    border-radius: 999px;
+    background: rgba(22, 30, 52, 0.36);
+    color: rgba(187, 247, 208, 0.72);
+    cursor: pointer;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+  }
+
+  .language-toggle:hover,
+  .language-toggle:focus-visible {
+    border-color: rgb(110 231 183);
+    background: rgba(110, 231, 183, 0.1);
+    color: rgb(187 247 208);
+    outline: none;
+  }
+
+  .lang-option {
+    opacity: 0.55;
+  }
+
+  .lang-option.is-active {
+    color: rgb(110 231 183);
+    opacity: 1;
+  }
+
+  .lang-sep {
+    color: rgba(187, 247, 208, 0.34);
+  }
+
+  :global(html:not(.dark)) .language-toggle {
+    background: rgba(255, 255, 255, 0.68);
+    border-color: rgba(5, 150, 105, 0.24);
+    color: rgb(71 85 105);
+  }
+
+  :global(html:not(.dark)) .language-toggle:hover,
+  :global(html:not(.dark)) .language-toggle:focus-visible {
+    background: rgb(236 253 245);
+    border-color: rgb(5 150 105);
+    color: rgb(15 23 42);
+  }
+
+  :global(html:not(.dark)) .lang-option.is-active {
+    color: rgb(5 150 105);
+  }
+</style>

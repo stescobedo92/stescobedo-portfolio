@@ -5,6 +5,7 @@ import { getCollection } from 'astro:content';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { profile } from '../data/portfolio';
+import { entrySlug } from '../lib/content';
 
 const POSTS_PER_PAGE = 9;
 
@@ -24,7 +25,7 @@ const visiblePosts = allPosts
 
 const featuredFlagged = visiblePosts.filter((post) => post.data.featured);
 const heroPost = (featuredFlagged.length > 0 ? featuredFlagged : visiblePosts)[0];
-const restPosts = visiblePosts.filter((post) => post.slug !== heroPost?.slug);
+const restPosts = visiblePosts.filter((post) => entrySlug(post) !== (heroPost ? entrySlug(heroPost) : undefined));
 
 const categorySet = new Set<string>();
 visiblePosts.forEach((post) => categorySet.add(post.data.category));
@@ -52,7 +53,7 @@ const latestDate = visiblePosts[0]?.data.pubDate ?? new Date();
 const lastCommitAgo = formatDistanceToNow(latestDate, { addSuffix: true });
 
 // Helper to format file size for each post (deterministic)
-const fileBytes = (post: any) => Math.max(512, wordsOf(post) * 6 + (post.slug.length * 17));
+const fileBytes = (post: any) => Math.max(512, wordsOf(post) * 6 + (entrySlug(post).length * 17));
 
 // Build a slug-based mock SHA per post (deterministic short hash)
 const shortSha = (input: string) => {
@@ -186,7 +187,7 @@ const commitMsg = (post: any) => {
           <div class="file-substats" aria-hidden="true">
             <span class="sub-cell">
               <span class="sub-key">commit</span>
-              <span class="sub-val mono">{shortSha(heroPost.slug)}</span>
+              <span class="sub-val mono">{shortSha(entrySlug(heroPost))}</span>
             </span>
             <span class="sub-cell">
               <span class="sub-key">author</span>
@@ -206,7 +207,7 @@ const commitMsg = (post: any) => {
           </div>
 
           <!-- Rendered README (the cover story preview) -->
-          <a class="readme-body" href={withBase(`blog/${heroPost.slug}`)} aria-label={`Open ${heroPost.data.title}`}>
+          <a class="readme-body" href={withBase(`blog/${entrySlug(heroPost)}`)} aria-label={`Open ${heroPost.data.title}`}>
             <div class="readme-meta">
               <span class="meta-cat">#{heroPost.data.category.toLowerCase()}</span>
               {heroPost.data.tags && heroPost.data.tags.slice(0, 3).map((tag: string) => (
@@ -275,16 +276,16 @@ const commitMsg = (post: any) => {
               data-search-blob={`${post.data.title} ${post.data.description} ${post.data.category} ${(post.data.tags ?? []).join(' ')}`.toLowerCase()}
               style={`--row-delay: ${idx * 38}ms;`}
             >
-              <a class="file-link" href={withBase(`blog/${post.slug}`)} aria-label={`Open ${post.data.title}`}>
+              <a class="file-link" href={withBase(`blog/${entrySlug(post)}`)} aria-label={`Open ${post.data.title}`}>
                 <div class="col-name">
                   <span class="file-icon" aria-hidden="true">M↓</span>
                   <div class="file-name-block">
-                    <span class="file-fname">{post.slug}.md</span>
+                    <span class="file-fname">{entrySlug(post)}.md</span>
                     <span class="file-title">{post.data.title}</span>
                   </div>
                 </div>
                 <div class="col-msg">
-                  <span class="commit-sha mono">{shortSha(post.slug)}</span>
+                  <span class="commit-sha mono">{shortSha(entrySlug(post))}</span>
                   <span class="commit-msg">{commitMsg(post)}</span>
                 </div>
                 <div class="col-size mono">{formatBytes(fileBytes(post))}</div>

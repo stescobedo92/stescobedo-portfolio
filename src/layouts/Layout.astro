@@ -2,6 +2,8 @@
 import '@fontsource/poppins/400.css';
 import '@fontsource/poppins/600.css';
 import '@fontsource/poppins/700.css';
+import '../styles/global.css';
+import LanguageToggle from '../components/LanguageToggle.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
 import BackToTop from '../components/portfolio/BackToTop.astro';
 import Icon from '../components/portfolio/Icon.astro';
@@ -25,7 +27,7 @@ const ghAvatar = (size: number) => `https://github.com/${profile.githubUsername}
 ---
 
 <!doctype html>
-<html lang="es" class="dark">
+<html lang="en" class="dark">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="description" content="Blog personal" />
@@ -36,6 +38,10 @@ const ghAvatar = (size: number) => `https://github.com/${profile.githubUsername}
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 		<script is:inline>
+			const pageLanguage = 'en';
+			localStorage.setItem('language', pageLanguage);
+			document.documentElement.lang = pageLanguage;
+			document.documentElement.dataset.lang = pageLanguage;
 			if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
 				document.documentElement.classList.add('dark')
 			} else {
@@ -44,7 +50,7 @@ const ghAvatar = (size: number) => `https://github.com/${profile.githubUsername}
 		</script>
 	</head>
 	<body>
-		<a class="skip-link" href="#main-content">Skip to main content</a>
+		<a class="skip-link" href="#main-content" data-i18n="shell.skip">Skip to main content</a>
 		<header id="site-header">
 			<nav aria-label="Main navigation">
 				<a href={withBase('')} class="brand">
@@ -54,20 +60,21 @@ const ghAvatar = (size: number) => `https://github.com/${profile.githubUsername}
 					</span>
 					<span class="brand-text">
 						<span class="brand-name">stescobedo</span>
-						<span class="brand-meta">Software Engineering</span>
+						<span class="brand-meta" data-i18n="nav.brandMeta">Software Engineering</span>
 					</span>
 				</a>
 
 				<div class="desktop-nav" id="desktop-nav">
 					<span class="nav-pill" aria-hidden="true"></span>
-					<a class="nav-link" href={`${withBase('')}#about`} data-section="about"><span class="num">01</span><span>About</span></a>
-					<a class="nav-link" href={`${withBase('')}#experience`} data-section="experience"><span class="num">02</span><span>Experience</span></a>
-					<a class="nav-link" href={`${withBase('')}#projects`} data-section="projects"><span class="num">03</span><span>Work</span></a>
-					<a class="nav-link" href={`${withBase('')}#contact`} data-section="contact"><span class="num">04</span><span>Contact</span></a>
-					<a class="nav-link" href={withBase('blog')} data-section="blog"><span class="num">05</span><span>Blog</span></a>
+					<a class="nav-link" href={`${withBase('')}#about`} data-section="about"><span class="num">01</span><span data-i18n="nav.about">About</span></a>
+					<a class="nav-link" href={`${withBase('')}#experience`} data-section="experience"><span class="num">02</span><span data-i18n="nav.experience">Experience</span></a>
+					<a class="nav-link" href={`${withBase('')}#projects`} data-section="projects"><span class="num">03</span><span data-i18n="nav.work">Work</span></a>
+					<a class="nav-link" href={`${withBase('')}#contact`} data-section="contact"><span class="num">04</span><span data-i18n="nav.contact">Contact</span></a>
+					<a class="nav-link" href={withBase('blog')} data-section="blog"><span class="num">05</span><span data-i18n="nav.blog">Blog</span></a>
 				</div>
 
 				<div class="nav-aside">
+					<LanguageToggle />
 					<ThemeToggle />
 				</div>
 
@@ -78,12 +85,13 @@ const ghAvatar = (size: number) => `https://github.com/${profile.githubUsername}
 			</nav>
 
 			<div id="mobile-menu" hidden>
-				<a class="m-link" href={`${withBase('')}#about`}><span class="num">01</span>About</a>
-				<a class="m-link" href={`${withBase('')}#experience`}><span class="num">02</span>Experience</a>
-				<a class="m-link" href={`${withBase('')}#projects`}><span class="num">03</span>Work</a>
-				<a class="m-link" href={`${withBase('')}#contact`}><span class="num">04</span>Contact</a>
-				<a class="m-link" href={withBase('blog')}><span class="num">05</span>Blog</a>
+				<a class="m-link" href={`${withBase('')}#about`}><span class="num">01</span><span data-i18n="nav.about">About</span></a>
+				<a class="m-link" href={`${withBase('')}#experience`}><span class="num">02</span><span data-i18n="nav.experience">Experience</span></a>
+				<a class="m-link" href={`${withBase('')}#projects`}><span class="num">03</span><span data-i18n="nav.work">Work</span></a>
+				<a class="m-link" href={`${withBase('')}#contact`}><span class="num">04</span><span data-i18n="nav.contact">Contact</span></a>
+				<a class="m-link" href={withBase('blog')}><span class="num">05</span><span data-i18n="nav.blog">Blog</span></a>
 				<div class="m-aside">
+					<LanguageToggle />
 					<ThemeToggle />
 				</div>
 			</div>
@@ -111,7 +119,7 @@ const ghAvatar = (size: number) => `https://github.com/${profile.githubUsername}
 				</span>
 
 				<button class="foot-goto" type="button" aria-label="Scroll to top" data-scroll-top>
-					<span class="goto-text">goto top<span class="goto-colon">:</span><span class="goto-zero">0</span><span class="goto-semi">;</span></span>
+					<span class="goto-text"><span data-i18n="footer.goto">goto top</span><span class="goto-colon">:</span><span class="goto-zero">0</span><span class="goto-semi">;</span></span>
 					<span class="goto-arrow" aria-hidden="true">↑</span>
 				</button>
 			</div>

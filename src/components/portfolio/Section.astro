@@ -1,15 +1,16 @@
 ---
 interface Props {
   title?: string;
+  titleKey?: string;
   id?: string;
   class?: string;
 }
 
-const { title, id, class: className = '' } = Astro.props;
+const { title, titleKey, id, class: className = '' } = Astro.props;
 ---
 
 <section id={id} class={`portfolio-section ${className}`}>
-  {title && <h2 class="numbered-heading">{title}</h2>}
+  {title && <h2 class="numbered-heading" data-i18n={titleKey}>{title}</h2>}
   <slot />
 </section>
 

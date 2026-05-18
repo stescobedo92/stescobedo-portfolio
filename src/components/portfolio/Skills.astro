@@ -14,10 +14,10 @@ const rowA = skills.filter((_, i) => i % 2 === 0);
 const rowB = skills.filter((_, i) => i % 2 === 1);
 ---
 
-<Section title="Stack" id="skills">
+<Section title="Stack" titleKey="sections.skills" id="skills">
   <p class="eyebrow">
     <span class="dash" aria-hidden="true"></span>
-    Daily drivers
+    <span data-i18n="skills.daily">Daily drivers</span>
     <span class="dash" aria-hidden="true"></span>
   </p>
 
@@ -25,15 +25,15 @@ const rowB = skills.filter((_, i) => i % 2 === 1);
   <div class="stats">
     <div class="stat">
       <span class="stat-num">8<span class="stat-glyph">+</span></span>
-      <span class="stat-lbl">Years building</span>
+      <span class="stat-lbl" data-i18n="skills.years">Years building</span>
     </div>
     <div class="stat">
       <span class="stat-num">{skills.length}</span>
-      <span class="stat-lbl">Languages &amp; tools</span>
+      <span class="stat-lbl" data-i18n="skills.tools">Languages &amp; tools</span>
     </div>
     <div class="stat">
       <span class="stat-num"><span class="stat-glyph">∞</span></span>
-      <span class="stat-lbl">Always learning</span>
+      <span class="stat-lbl" data-i18n="skills.learning">Always learning</span>
     </div>
   </div>
 
@@ -83,7 +83,7 @@ const rowB = skills.filter((_, i) => i % 2 === 1);
     </div>
   </div>
 
-  <p class="footer-note">Hover to slow · Click to bring focus.</p>
+  <p class="footer-note" data-i18n="skills.note">Hover to slow · Click to bring focus.</p>
 </Section>
 
 <style>

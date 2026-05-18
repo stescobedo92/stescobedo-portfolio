@@ -1,6 +1,6 @@
 import { defineConfig } from 'astro/config';
-import tailwind from '@astrojs/tailwind';
 import mdx from '@astrojs/mdx';
+import tailwindcss from '@tailwindcss/vite';
 
 const repository = 'stescobedo-portfolio';
 const isGitHubPages = process.env.DEPLOY_TARGET === 'github-pages';
@@ -11,5 +11,8 @@ export default defineConfig({
     : 'http://localhost:4321',
   base: isGitHubPages ? `/${repository}` : '/',
   trailingSlash: 'ignore',
-  integrations: [tailwind(), mdx()],
+  integrations: [mdx()],
+  vite: {
+    plugins: [tailwindcss()],
+  },
 });

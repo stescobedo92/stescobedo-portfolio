@@ -41,6 +41,7 @@ jobs:
         run: npm run build
         env:
           DEPLOY_TARGET: github-pages
+          GITHUB_TOKEN: ${{ secrets.GH_PROFILE_TOKEN || github.token }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

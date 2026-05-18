@@ -29,7 +29,7 @@ const filenameOf = (slug: string) => `${slug}.mdx`;
 ---
 
 {posts.length > 0 && (
-  <Section title="Posts" id="posts">
+  <Section title="Posts" titleKey="sections.posts" id="posts">
     <p class="posts-eyebrow">
       <span class="dash" aria-hidden="true"></span>
       cd ~/blog · ls --recent
@@ -96,7 +96,7 @@ const filenameOf = (slug: string) => `${slug}.mdx`;
 
     <div class="posts-foot">
       <a class="posts-archive" href={withBase('blog')}>
-        cat all-entries
+        <span data-i18n="posts.archive">cat all-entries</span>
         <Icon name="arrow-right" class="h-3 w-3" />
       </a>
     </div>
